@@ -1,0 +1,30 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Consultar Paciente{% endblock %}
+
+{% block content %}
+<h2>Consultar Paciente</h2>
+
+<form method="get" class="mb-3">
+    <div class="input-group">
+        <input type="text" name="dni" class="form-control" placeholder="Ingrese DNI" value="{{ dni }}">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+    </div>
+</form>
+
+{% if dni %}
+    {% if paciente %}
+        <div class="alert alert-success">
+            <strong>Paciente encontrado:</strong><br>
+            Nombre: {{ paciente.nombre }}<br>
+            Apellido: {{ paciente.apellido }}
+        </div>
+    {% else %}
+        <div class="alert alert-danger">
+            No se encontró un paciente con el DNI: <strong>{{ dni }}</strong>
+        </div>
+        <a href="{% url 'registrar_paciente' dni=dni %}" class="btn btn-primary">Registrar Paciente</a>
+    {% endif %}
+{% endif %}
+<a href="{% url 'inicio' %}" class="btn btn-secondary mt-3">Volver al inicio</a>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends 'gestion/base.html' %}
+
+{% block content %}
+<h2>Registrar Paciente</h2>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <div class="mb-3">
+        {{ form.dni.label_tag }} 
+        {{ form.dni }}
+        {{ form.dni.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.sexo.label_tag }} 
+        {{ form.sexo }}
+        {{ form.sexo.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.apellido.label_tag }} 
+        {{ form.apellido }}
+        {{ form.apellido.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.nombre.label_tag }} 
+        {{ form.nombre }}
+        {{ form.nombre.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.fecha_nacimiento.label_tag }} 
+        {{ form.fecha_nacimiento }}
+        {{ form.fecha_nacimiento.errors }}
+    </div>
+
+    <div class="mb-3">
+        <label>Edad:</label>
+        <input type="text" id="edad" class="form-control" readonly>
+    </div>
+
+    <div class="mb-3">
+        {{ form.telefono_celular.label_tag }} 
+        {{ form.telefono_celular }}
+        {{ form.telefono_celular.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.telefono_fijo.label_tag }} 
+        {{ form.telefono_fijo }}
+        {{ form.telefono_fijo.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.obra_social.label_tag }} 
+        {{ form.obra_social }}
+        {{ form.obra_social.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.domicilio.label_tag }} 
+        {{ form.domicilio }}
+        {{ form.domicilio.errors }}
+    </div>
+
+    <div class="mb-3">
+        {{ form.localidad.label_tag }} 
+        {{ form.localidad }}
+        {{ form.localidad.errors }}
+    </div>
+
+    <button type="submit" class="btn btn-success">Guardar</button>
+</form>
+
+<script>
+document.getElementById('id_fecha_nacimiento').addEventListener('change', function() {
+    const fecha = new Date(this.value);
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    const m = hoy.getMonth() - fecha.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+        edad--;
+    }
+    document.getElementById('edad').value = edad >= 0 ? edad : '';
+});
+</script>
+
+{% endblock %}

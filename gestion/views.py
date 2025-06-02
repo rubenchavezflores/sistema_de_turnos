@@ -2,6 +2,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from .models import Especialidad, Medico, Paciente, Turno
 from django.contrib import messages
 from django.utils.dateparse import parse_date
+from django.contrib import messages
+from .forms import PacienteForm
+
 
 def inicio(request):
     especialidades = Especialidad.objects.all()
@@ -64,3 +67,37 @@ def otorgar_turno(request, medico_id):
         'dni': dni,
         'paciente': paciente,
     })
+def consultar_paciente(request):
+    paciente = None
+    dni = request.GET.get('dni')
+
+    if dni:
+        try:
+            paciente = Paciente.objects.get(dni=dni)
+        except Paciente.DoesNotExist:
+            paciente = None
+
+    return render(request, 'gestion/consultar_paciente.html', {
+        'paciente': paciente,
+        'dni': dni
+    })
+
+from datetime import datetime
+
+def registrar_paciente(request, dni):
+    if Paciente.objects.filter(dni=dni).exists():
+        messages.info(request, f"El paciente con DNI {dni} ya está registrado.")
+        return redirect('inicio')
+
+    if request.method == 'POST':
+        form = PacienteForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Paciente registrado con éxito.')
+            return redirect('inicio')
+    else:
+        form = PacienteForm(initial={'dni': dni})
+
+    return render(request, 'gestion/registrar_paciente.html', {'form': form})
+
+
