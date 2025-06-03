@@ -1,75 +1,70 @@
 {% extends 'gestion/base.html' %}
 
-{% block title %}Otorgar Turno{% endblock %}
-
 {% block content %}
-<h3>Otorgar Turno: {{ medico.apellido|upper }} {{ medico.nombre|title }} - {{ medico.especialidad.nombre }}</h3>
+<h2>Otorgar Turno: {{ medico.nombre }} - {{ medico.especialidad }}</h2>
 
-{% if dias_atencion %}
-    <h5>Días de atención:</h5>
-    <ul>
-    {% for dia in dias_atencion %}
-        <li>
-            {{ dia.dia }}: {{ dia.horario_inicio }} a {{ dia.horario_fin }} - cada {{ dia.intervalo_minutos }} minutos
-        </li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>Este médico no tiene días de atención configurados.</p>
-{% endif %}
+<form method="post">
+  {% csrf_token %}
 
+  <!-- Buscador de paciente -->
+  <div class="mb-3">
+    <label for="dni">Buscar Paciente por DNI</label>
+    <input type="text" id="dni" name="dni" class="form-control" value="{{ dni }}">
+    <button type="submit" class="btn btn-primary mt-2">Buscar</button>
+  </div>
 
-<form method="post" class="mb-3">
-    {% csrf_token %}
-    <h5>Buscar Paciente por DNI</h5>
-    <div class="mb-3">
-        <label for="dni" class="form-label">DNI:</label>
-        <input type="text" name="dni" class="form-control" value="{{ dni }}">
+  <div class="row">
+    <!-- Tabla de horarios -->
+    <div class="col-md-8">
+      {% if matriz_turnos %}
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Hora</th>
+              {% for fecha in fechas %}
+                <th>{{ fecha }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for fila in matriz_turnos %}
+              <tr>
+                <td>{{ fila.hora }}</td>
+                {% for celda in fila.celdas %}
+                  <td>
+                    {% if celda.ocupado %}
+                      Ocupado
+                    {% else %}
+                      <button type="submit" name="fecha" value="{{ celda.fecha_iso }}" class="btn btn-sm btn-success">
+                        <input type="hidden" name="hora" value="{{ celda.hora }}">
+                        Seleccionar
+                      </button>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>No hay turnos disponibles.</p>
+      {% endif %}
     </div>
-    <button type="submit" class="btn btn-info">Buscar</button>
+
+    <!-- Datos del paciente -->
+    <div class="col-md-4">
+      {% if paciente %}
+        <h5>Datos del Paciente</h5>
+        <ul class="list-group">
+          <li class="list-group-item"><strong>DNI:</strong> {{ paciente.dni }}</li>
+          <li class="list-group-item"><strong>Nombre:</strong> {{ paciente.nombre }} {{ paciente.apellido }}</li>
+          <li class="list-group-item"><strong>Sexo:</strong> {{ paciente.sexo }}</li>
+          <li class="list-group-item"><strong>Edad:</strong> {{ paciente.edad }}</li>
+          <li class="list-group-item"><strong>Obra Social:</strong> {{ paciente.obra_social }}</li>
+          <li class="list-group-item"><strong>Localidad:</strong> {{ paciente.localidad }}</li>
+        </ul>
+      {% endif %}
+    </div>
+  </div>
 </form>
-
-{% if paciente %}
-    <div class="alert alert-success">
-        Paciente encontrado: {{ paciente.nombre }} {{ paciente.apellido }}
-    </div>
-
-    <h5>Asignar Turno</h5>
-    <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="dni" value="{{ paciente.dni }}">
-        <div class="mb-3">
-            <label class="form-label">Fecha del turno:</label>
-            <input type="date" name="fecha" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Guardar Turno</button>
-    </form>
-
-{% elif dni %}
-    <div class="alert alert-warning">
-        Paciente no registrado. Por favor completar los datos para registrar y asignar el turno:
-    </div>
-
-    <h5>Registrar Paciente y Asignar Turno</h5>
-    <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="dni" value="{{ dni }}">
-        <div class="mb-3">
-            <label class="form-label">Nombre:</label>
-            <input type="text" name="nombre" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Apellido:</label>
-            <input type="text" name="apellido" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Fecha del turno:</label>
-            <input type="date" name="fecha" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Registrar y Guardar Turno</button>
-    </form>
-{% endif %}
-
-
-<a href="{% url 'inicio' %}" class="btn btn-secondary mt-3">← Volver al inicio</a>
 {% endblock %}

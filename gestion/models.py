@@ -46,6 +46,14 @@ class Paciente(models.Model):
     apellido = models.CharField(max_length=100)
     nombre = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField(blank=True, null=True)
+    @property
+    def edad(self):
+        if self.fecha_nacimiento:
+            today = date.today()
+            return today.year - self.fecha_nacimiento.year - (
+                (today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
+            )
+        return ''
     telefono_celular = models.CharField(max_length=20, blank=True, null=True)
     telefono_fijo = models.CharField(max_length=20, blank=True, null=True)
     obra_social = models.CharField(max_length=100, blank=True, null=True)
@@ -71,3 +79,11 @@ class Turno(models.Model):
     def __str__(self):
         return f"Turno con {self.medico} el {self.fecha} a las {self.hora}"
 
+class Turno(models.Model):
+    medico = models.ForeignKey(Medico, on_delete=models.CASCADE)
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE)
+    fecha = models.DateField()
+    hora = models.CharField(max_length=5)  # formato HH:MM
+
+    def __str__(self):
+        return f"{self.medico} - {self.fecha} {self.hora} - {self.paciente}"

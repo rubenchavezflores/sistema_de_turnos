@@ -16,8 +16,18 @@
     {% if paciente %}
         <div class="alert alert-success">
             <strong>Paciente encontrado:</strong><br>
-            Nombre: {{ paciente.nombre }}<br>
-            Apellido: {{ paciente.apellido }}
+            <tr>
+    <td>{{ paciente.apellido }}</td>
+    <td>{{ paciente.nombre }}</td>
+    <td>{{ paciente.sexo }}</td>
+    <td>{{ paciente.edad }}</td>
+    <td>{{ paciente.obra_social }}</td>
+    <td>{{ paciente.localidad }}</td>
+    <td>
+        <a href="{% url 'modificar_paciente' paciente.dni %}" class="btn btn-primary btn-sm">Modificar</a>
+    </td>
+</tr>
+
         </div>
     {% else %}
         <div class="alert alert-danger">
