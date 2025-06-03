@@ -3,68 +3,79 @@
 {% block content %}
 <h2>Otorgar Turno: {{ medico.nombre }} - {{ medico.especialidad }}</h2>
 
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- Formulario de búsqueda de paciente -->
 <form method="post">
   {% csrf_token %}
-
-  <!-- Buscador de paciente -->
   <div class="mb-3">
     <label for="dni">Buscar Paciente por DNI</label>
     <input type="text" id="dni" name="dni" class="form-control" value="{{ dni }}">
     <button type="submit" class="btn btn-primary mt-2">Buscar</button>
   </div>
+</form>
 
-  <div class="row">
-    <!-- Tabla de horarios -->
-    <div class="col-md-8">
-      {% if matriz_turnos %}
-        <table class="table table-bordered">
-          <thead>
+<div class="row">
+  <!-- Tabla de horarios -->
+  <div class="col-md-8">
+    {% if matriz_turnos %}
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            {% for fecha in fechas %}
+              <th>{{ fecha }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in matriz_turnos %}
             <tr>
-              <th>Hora</th>
-              {% for fecha in fechas %}
-                <th>{{ fecha }}</th>
+              <td>{{ fila.hora }}</td>
+              {% for celda in fila.celdas %}
+                <td>
+                  {% if celda.ocupado %}
+                    Ocupado
+                  {% else %}
+                    <!-- Formulario individual para cada turno libre -->
+                    <form method="post" style="display:inline;">
+                      {% csrf_token %}
+                      <input type="hidden" name="fecha" value="{{ celda.fecha_iso }}">
+                      <input type="hidden" name="hora" value="{{ celda.hora }}">
+                      <input type="hidden" name="dni" value="{{ dni }}">
+                      <button type="submit" class="btn btn-sm btn-success">Seleccionar</button>
+                    </form>
+                  {% endif %}
+                </td>
               {% endfor %}
             </tr>
-          </thead>
-          <tbody>
-            {% for fila in matriz_turnos %}
-              <tr>
-                <td>{{ fila.hora }}</td>
-                {% for celda in fila.celdas %}
-                  <td>
-                    {% if celda.ocupado %}
-                      Ocupado
-                    {% else %}
-                      <button type="submit" name="fecha" value="{{ celda.fecha_iso }}" class="btn btn-sm btn-success">
-                        <input type="hidden" name="hora" value="{{ celda.hora }}">
-                        Seleccionar
-                      </button>
-                    {% endif %}
-                  </td>
-                {% endfor %}
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p>No hay turnos disponibles.</p>
-      {% endif %}
-    </div>
-
-    <!-- Datos del paciente -->
-    <div class="col-md-4">
-      {% if paciente %}
-        <h5>Datos del Paciente</h5>
-        <ul class="list-group">
-          <li class="list-group-item"><strong>DNI:</strong> {{ paciente.dni }}</li>
-          <li class="list-group-item"><strong>Nombre:</strong> {{ paciente.nombre }} {{ paciente.apellido }}</li>
-          <li class="list-group-item"><strong>Sexo:</strong> {{ paciente.sexo }}</li>
-          <li class="list-group-item"><strong>Edad:</strong> {{ paciente.edad }}</li>
-          <li class="list-group-item"><strong>Obra Social:</strong> {{ paciente.obra_social }}</li>
-          <li class="list-group-item"><strong>Localidad:</strong> {{ paciente.localidad }}</li>
-        </ul>
-      {% endif %}
-    </div>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No hay turnos disponibles.</p>
+    {% endif %}
   </div>
-</form>
+
+  <!-- Datos del paciente -->
+  <div class="col-md-4">
+    {% if paciente %}
+      <h5>Datos del Paciente</h5>
+      <ul class="list-group">
+        <li class="list-group-item"><strong>DNI:</strong> {{ paciente.dni }}</li>
+        <li class="list-group-item"><strong>Nombre:</strong> {{ paciente.nombre }} {{ paciente.apellido }}</li>
+        <li class="list-group-item"><strong>Sexo:</strong> {{ paciente.sexo }}</li>
+        <li class="list-group-item"><strong>Edad:</strong> {{ paciente.edad }}</li>
+        <li class="list-group-item"><strong>Obra Social:</strong> {{ paciente.obra_social }}</li>
+        <li class="list-group-item"><strong>Localidad:</strong> {{ paciente.localidad }}</li>
+      </ul>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

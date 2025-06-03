@@ -3,38 +3,53 @@
 {% block title %}Consultar Paciente{% endblock %}
 
 {% block content %}
-<h2>Consultar Paciente</h2>
+<h2 class="my-3">Consultar Paciente</h2>
 
-<form method="get" class="mb-3">
-    <div class="input-group">
-        <input type="text" name="dni" class="form-control" placeholder="Ingrese DNI" value="{{ dni }}">
-        <button type="submit" class="btn btn-primary">Buscar</button>
-    </div>
+<form method="GET" action="{% url 'consultar_paciente' %}" class="form-inline my-2">
+  <label for="dni">DNI:</label>
+  <input type="text" name="dni" id="dni" class="form-control form-control-sm mx-2" style="width: 150px;" placeholder="Ej: 12345678">
+  <button type="submit" class="btn btn-primary btn-sm">Buscar</button>
 </form>
+
 
 {% if dni %}
     {% if paciente %}
         <div class="alert alert-success">
-            <strong>Paciente encontrado:</strong><br>
-            <tr>
-    <td>{{ paciente.apellido }}</td>
-    <td>{{ paciente.nombre }}</td>
-    <td>{{ paciente.sexo }}</td>
-    <td>{{ paciente.edad }}</td>
-    <td>{{ paciente.obra_social }}</td>
-    <td>{{ paciente.localidad }}</td>
-    <td>
-        <a href="{% url 'modificar_paciente' paciente.dni %}" class="btn btn-primary btn-sm">Modificar</a>
-    </td>
-</tr>
-
+            <strong>Paciente encontrado:</strong>
         </div>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Apellido</th>
+                    <th>Nombre</th>
+                    <th>Sexo</th>
+                    <th>Edad</th>
+                    <th>Obra Social</th>
+                    <th>Localidad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ paciente.apellido }}</td>
+                    <td>{{ paciente.nombre }}</td>
+                    <td>{{ paciente.sexo }}</td>
+                    <td>{{ paciente.edad }}</td>
+                    <td>{{ paciente.obra_social }}</td>
+                    <td>{{ paciente.localidad }}</td>
+                    <td>
+                        <a href="{% url 'modificar_paciente' paciente.dni %}" class="btn btn-primary btn-sm">Modificar</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     {% else %}
         <div class="alert alert-danger">
             No se encontró un paciente con el DNI: <strong>{{ dni }}</strong>
         </div>
-        <a href="{% url 'registrar_paciente' dni=dni %}" class="btn btn-primary">Registrar Paciente</a>
+        <a href="{% url 'registrar_paciente' dni=dni %}" class="btn btn-success">Registrar Paciente</a>
     {% endif %}
 {% endif %}
-<a href="{% url 'inicio' %}" class="btn btn-secondary mt-3">Volver al inicio</a>
+
+<a href="{% url 'inicio' %}" class="btn btn-secondary mt-4">Volver al inicio</a>
 {% endblock %}
