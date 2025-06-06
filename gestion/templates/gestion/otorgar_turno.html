@@ -1,81 +1,209 @@
 {% extends 'gestion/base.html' %}
 
 {% block content %}
-<h2>Otorgar Turno: {{ medico.nombre }} - {{ medico.especialidad }}</h2>
+<div class="container-fluid">
+  <h2>Otorgar Turno: {{ medico.nombre }} - {{ medico.especialidad }}</h2>
 
-{% if messages %}
-  {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">
-      {{ message }}
-    </div>
-  {% endfor %}
-{% endif %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
 
-<!-- Formulario de búsqueda de paciente -->
-<form method="post">
-  {% csrf_token %}
-  <div class="mb-3">
-    <label for="dni">Buscar Paciente por DNI</label>
-    <input type="text" id="dni" name="dni" class="form-control" value="{{ dni }}">
-    <button type="submit" class="btn btn-primary mt-2">Buscar</button>
-  </div>
-</form>
-
-<div class="row">
-  <!-- Tabla de horarios -->
-  <div class="col-md-8">
-    {% if matriz_turnos %}
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Hora</th>
-            {% for fecha in fechas %}
-              <th>{{ fecha }}</th>
+  <div class="row">
+    {# COLUMNA IZQUIERDA - INFORMACIÓN DEL MÉDICO #}
+    <div class="col-md-7">
+      {# 1) Sección "Días y horarios de atención" #}
+      {% if dias_mostrados %}
+        <div class="mb-4">
+         
+          <ul class="list-unstyled">
+            {% for d in dias_mostrados %}
+              <li>• <strong>{{ d.dia }}:</strong> {{ d.horario_inicio }} - {{ d.horario_fin }} (Intervalo: {{ d.intervalo }} min)</li>
             {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for fila in matriz_turnos %}
-            <tr>
-              <td>{{ fila.hora }}</td>
-              {% for celda in fila.celdas %}
-                <td>
-                  {% if celda.ocupado %}
-                    Ocupado
-                  {% else %}
-                    <!-- Formulario individual para cada turno libre -->
-                    <form method="post" style="display:inline;">
-                      {% csrf_token %}
-                      <input type="hidden" name="fecha" value="{{ celda.fecha_iso }}">
-                      <input type="hidden" name="hora" value="{{ celda.hora }}">
-                      <input type="hidden" name="dni" value="{{ dni }}">
-                      <button type="submit" class="btn btn-sm btn-success">Seleccionar</button>
-                    </form>
-                  {% endif %}
-                </td>
-              {% endfor %}
-            </tr>
+          </ul>
+        </div>
+        
+        {% if fecha_seleccionada %}
+          <div class="mb-4">
+            <h6> Horario para {{ fecha_seleccionada|date:"l d/m/Y" }}</h6>
+            {% for d in dias_mostrados %}
+              {% if d.dia == fecha_seleccionada|date:"l" %}
+                <p class="text-info"><strong>Horario:</strong> {{ d.horario_inicio }} - {{ d.horario_fin }}</p>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    {# COLUMNA DERECHA - CALENDARIO #}
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header text-center">
+          <h5> Calendario de {{ mes }}/{{ anio }}</h5>
+          <div class="btn-group mb-2" role="group">
+            <a href="?mes={{ mes_anterior }}&anio={{ anio_anterior }}{% if dni %}&dni={{ dni }}{% endif %}" 
+               class="btn btn-secondary btn-sm">« Anterior</a>
+            <a href="?mes={{ mes_siguiente }}&anio={{ anio_siguiente }}{% if dni %}&dni={{ dni }}{% endif %}" 
+               class="btn btn-secondary btn-sm">Siguiente »</a>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <!-- Encabezados de días -->
+          <div class="row text-center mb-2">
+            <div class="col"><small class="text-muted fw-bold">LU</small></div>
+            <div class="col"><small class="text-muted fw-bold">MA</small></div>
+            <div class="col"><small class="text-muted fw-bold">MI</small></div>
+            <div class="col"><small class="text-muted fw-bold">JU</small></div>
+            <div class="col"><small class="text-muted fw-bold">VI</small></div>
+            <div class="col"><small class="text-muted fw-bold">SA</small></div>
+            <div class="col"><small class="text-muted fw-bold">DO</small></div>
+          </div>
+          
+          <!-- Crear semanas agrupando de 7 en 7 -->
+          {% for dia in calendario %}
+            {% if forloop.counter0|divisibleby:7 %}
+              <div class="row text-center mb-1">
+            {% endif %}
+            
+            <div class="col p-1">
+              {% if dia.es_del_mes %}
+                {% if dia.atiende %}
+                  <!-- Día disponible para turnos -->
+                  <a href="?mes={{ mes }}&anio={{ anio }}&fecha={{ dia.fecha|date:'Y-m-d' }}{% if dni %}&dni={{ dni }}{% endif %}" 
+                     class="btn w-100 d-flex align-items-center justify-content-center text-decoration-none
+                     {% if fecha_seleccionada and dia.fecha|date:'Y-m-d' == fecha_seleccionada|date:'Y-m-d' %}btn-primary text-white{% else %}btn-outline-primary{% endif %}" 
+                     style="height: 40px; border-radius: 8px; font-weight: 500;">
+                    {{ dia.fecha.day }}
+                  </a>
+                {% else %}
+                  <!-- Día sin atención médica -->
+                  <div class="d-flex align-items-center justify-content-center text-muted" 
+                       style="height: 40px; font-weight: 400;">
+                    {{ dia.fecha.day }}
+                  </div>
+                {% endif %}
+              {% else %}
+                <!-- Días del mes anterior/siguiente -->
+                <div class="d-flex align-items-center justify-content-center text-muted" 
+                     style="height: 40px; opacity: 0.4; font-weight: 300;">
+                  {{ dia.fecha.day }}
+                </div>
+              {% endif %}
+            </div>
+            
+            {% if forloop.counter|divisibleby:7 or forloop.last %}
+              </div>
+            {% endif %}
           {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p>No hay turnos disponibles.</p>
-    {% endif %}
+        </div>
+        <div class="card-footer">
+          <small class="text-muted">
+            <span class="badge bg-outline-primary me-2" style="border: 1px solid #0d6efd;">●</span> Días disponibles
+            {% if fecha_seleccionada %}
+            <br><span class="badge bg-primary me-2">●</span> Día seleccionado
+            {% endif %}
+          </small>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Datos del paciente -->
-  <div class="col-md-4">
-    {% if paciente %}
-      <h5>Datos del Paciente</h5>
-      <ul class="list-group">
-        <li class="list-group-item"><strong>DNI:</strong> {{ paciente.dni }}</li>
-        <li class="list-group-item"><strong>Nombre:</strong> {{ paciente.nombre }} {{ paciente.apellido }}</li>
-        <li class="list-group-item"><strong>Sexo:</strong> {{ paciente.sexo }}</li>
-        <li class="list-group-item"><strong>Edad:</strong> {{ paciente.edad }}</li>
-        <li class="list-group-item"><strong>Obra Social:</strong> {{ paciente.obra_social }}</li>
-        <li class="list-group-item"><strong>Localidad:</strong> {{ paciente.localidad }}</li>
-      </ul>
-    {% endif %}
-  </div>
+  {# 3) FORMULARIO DE BÚSQUEDA Y TABLA DE TURNOS PARA FECHA SELECCIONADA #}
+  {% if fecha_seleccionada %}
+    <div class="mt-4">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0">Turnos disponibles para {{ fecha_seleccionada|date:"l d/m/Y" }}</h4>
+        </div>
+        <div class="card-body">
+          {% if matriz_turnos %}
+            <div class="table-responsive">
+              <table class="table table-bordered text-center align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>🕒 Horario</th>
+                    <th>DNI 🔍</th>
+                    <th>Apellido</th>
+                    <th>Nombre</th>
+                    <th>Sexo</th>
+                    <th>Edad</th>
+                    <th>Obra Social</th>
+                    <th>Localidad</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for fila in matriz_turnos %}
+                  <tr>
+                    <td><strong>{{ fila.hora }}</strong></td>
+                    <td>
+                      <form method="get" class="d-flex align-items-center justify-content-center">
+                        <input type="hidden" name="mes" value="{{ mes }}">
+                        <input type="hidden" name="anio" value="{{ anio }}">
+                        <input type="hidden" name="fecha" value="{{ fecha_seleccionada }}">
+                        <div class="input-group input-group-sm" style="max-width: 140px;">
+                          <input type="text" name="dni" class="form-control" placeholder="Ingrese DNI" 
+                                 value="{{ dni }}" maxlength="10" required pattern="[0-9]{7,8}">
+                          <button class="btn btn-outline-primary" type="submit" title="Buscar paciente">
+                            🔍
+                          </button>
+                        </div>
+                      </form>
+                    </td>
+                    <td>{% if paciente %}{{ paciente.apellido }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td>{% if paciente %}{{ paciente.nombre }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td>{% if paciente %}{{ paciente.sexo }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td>{% if paciente %}{{ paciente.edad }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td>{% if paciente %}{{ paciente.obra_social }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td>{% if paciente %}{{ paciente.localidad }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td>
+                      {% if fila.ocupado %}
+                        <span class="badge bg-danger">Ocupado</span>
+                      {% else %}
+                        {% if paciente %}
+                          <form method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="reservar_turno">
+                            <input type="hidden" name="fecha" value="{{ fecha_seleccionada }}">
+                            <input type="hidden" name="hora" value="{{ fila.hora }}">
+                            <input type="hidden" name="dni" value="{{ dni }}">
+                            <button type="submit" class="btn btn-sm btn-success" title="Asignar turno">
+                              ✓ Asignar
+                            </button>
+                          </form>
+                        {% else %}
+                          <span class="text-muted">Ingrese DNI</span>
+                        {% endif %}
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No hay turnos disponibles para esta fecha.
+            </div>
+          {% endif %}
+
+          {% if dni and not paciente %}
+            <div class="alert alert-warning mt-3">
+              <i class="fas fa-exclamation-triangle"></i> No se encontró ningún paciente con DNI {{ dni }}.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="mt-4">
+      <div class="alert alert-info text-center">
+        <h5><i class="fas fa-calendar-check"></i> Seleccione una fecha del calendario</h5>
+        <p class="mb-0">👆 Haga clic en un día <span class="badge bg-outline-primary" style="border: 1px solid #0d6efd;">disponible</span> para ver los turnos</p>
+      </div>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

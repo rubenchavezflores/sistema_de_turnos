@@ -1,11 +1,23 @@
+# views.py - Importaciones limpias y ordenadas
+
+from datetime import datetime, timedelta, time, date
+from calendar import monthrange
+
+from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from datetime import date, timedelta, datetime
-from django.utils.dateparse import parse_date
-from .models import Especialidad, Medico, Paciente, Turno
-from django.http import HttpResponse
+
+from .models import Especialidad, Medico, Paciente, Turno, DiaAtencion
 from .forms import PacienteForm
-import re
+
+from .models import Medico, Paciente, Turno, HorarioAtencion
+
+import calendar
+# Mapeo de nombre de día a weekday int
+DIA_A_INT = {
+    'LUNES': 0, 'MARTES': 1, 'MIÉRCOLES': 2, 'MIERCOLES': 2,
+    'JUEVES': 3, 'VIERNES': 4, 'SÁBADO': 5, 'SABADO': 5, 'DOMINGO': 6,
+}
 
 def inicio(request):
     especialidades = Especialidad.objects.all()
@@ -21,7 +33,6 @@ def inicio(request):
                 resultados = Medico.objects.filter(especialidad_id=especialidad_id)
             else:
                 resultados = Medico.objects.none()
-
         elif buscar_por == 'medico':
             medico_id = request.POST.get('medico')
             if medico_id:
@@ -37,292 +48,167 @@ def inicio(request):
     return render(request, 'gestion/inicio.html', context)
 
 
-
 def otorgar_turno(request, medico_id):
-    """
-    Vista para otorgar turnos a pacientes.
-    Genera una matriz de turnos disponibles para las próximas 2 semanas.
-    """
     medico = get_object_or_404(Medico, id=medico_id)
-    
-    # Procesar formulario si es POST
-    if request.method == 'POST':
-        return procesar_formulario_turno(request, medico)
-    
-    # Obtener DNI y paciente
-    dni = request.GET.get('dni', '').strip()
-    paciente = buscar_paciente_por_dni(dni) if dni else None
-    
-    # Generar fechas de atención
-    fechas_atencion = generar_fechas_atencion(medico)
-    
-    # Generar matriz de turnos
-    matriz_turnos = generar_matriz_turnos(medico, fechas_atencion)
-    
-    # Preparar contexto
-    context = {
-        'medico': medico,
-        'dni': dni,
-        'paciente': paciente,
-        'matriz_turnos': matriz_turnos,
-        'fechas_disponibles': [fecha['fecha_formateada'] for fecha in fechas_atencion],
-        'dias_atencion_iso': [fecha['fecha_iso'] for fecha in fechas_atencion],
-    }
-    
-    return render(request, 'gestion/otorgar_turno.html', context)
+    hoy = timezone.now().date()
 
-def buscar_paciente_por_dni(dni):
-    """
-    Busca un paciente por DNI con validación básica.
-    """
-    # Validar formato de DNI (solo números, 7-8 dígitos)
-    if not re.match(r'^\d{7,8}$', dni):
-        return None
-    
-    try:
-        return Paciente.objects.filter(dni=dni).first()
-    except Exception:
-        return None
+    # Parámetros GET
+    mes = int(request.GET.get('mes', hoy.month))
+    anio = int(request.GET.get('anio', hoy.year))
+    fecha_str = request.GET.get('fecha')
+    dni = request.GET.get('dni')
 
-def generar_fechas_atencion(medico, dias_adelante=14):
-    """
-    Genera las fechas de atención del médico para los próximos días.
-    """
-    hoy = date.today()
-    dias_semana_atencion = medico.dias_atencion.values(
-        'dia', 'horario_inicio', 'horario_fin', 'intervalo_minutos'
-    )
-    
-    fechas_atencion = []
-    
-    for i in range(dias_adelante):
-        dia = hoy + timedelta(days=i)
-        
-        # Buscar si el médico atiende ese día de la semana
-        for config_dia in dias_semana_atencion:
-            if dia.weekday() == config_dia['dia']:
-                fechas_atencion.append({
-                    'fecha': dia,
-                    'fecha_iso': dia.isoformat(),
-                    'fecha_formateada': dia.strftime('%A %d/%m/%Y'),
-                    'horario_inicio': config_dia['horario_inicio'],
-                    'horario_fin': config_dia['horario_fin'],
-                    'intervalo_minutos': config_dia['intervalo_minutos'],
-                })
-                break  # Solo una configuración por día
-    
-    return fechas_atencion
+    fecha_seleccionada = None
+    paciente = None
 
-def generar_intervalos_horarios(hora_inicio_str, hora_fin_str, intervalo_minutos):
-    """
-    Genera los intervalos de horarios disponibles.
-    """
-    try:
-        # Usar solo time objects para evitar problemas de fecha
-        from datetime import time
-        
-        hora_inicio = datetime.strptime(hora_inicio_str, '%H:%M').time()
-        hora_fin = datetime.strptime(hora_fin_str, '%H:%M').time()
-        
-        intervalos = []
-        
-        # Convertir a datetime para hacer cálculos
-        dt_inicio = datetime.combine(date.today(), hora_inicio)
-        dt_fin = datetime.combine(date.today(), hora_fin)
-        
-        current = dt_inicio
-        while current + timedelta(minutes=intervalo_minutos) <= dt_fin:
-            intervalos.append(current.strftime('%H:%M'))
-            current += timedelta(minutes=intervalo_minutos)
-        
-        return intervalos
-        
-    except ValueError as e:
-        # Log del error en producción
-        print(f"Error generando intervalos: {e}")
-        return []
+    # Convertir fecha seleccionada a objeto date
+    if fecha_str:
+        try:
+            fecha_seleccionada = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except ValueError:
+            fecha_seleccionada = None
 
-def generar_matriz_turnos(medico, fechas_atencion):
-    """
-    Genera la matriz de turnos con disponibilidad.
-    """
-    if not fechas_atencion:
-        return []
-    
-    # Obtener turnos ya ocupados
-    fechas_iso = [fecha['fecha_iso'] for fecha in fechas_atencion]
-    turnos_ocupados = Turno.objects.filter(
-        medico=medico, 
-        fecha__in=fechas_iso
-    ).values_list('fecha', 'hora')
-    
-    ocupados_set = {(str(fecha), hora) for fecha, hora in turnos_ocupados}
-    
-    # Generar todos los horarios únicos
-    todos_los_horarios = set()
-    fechas_con_intervalos = []
-    
-    for fecha in fechas_atencion:
-        intervalos = generar_intervalos_horarios(
-            fecha['horario_inicio'],
-            fecha['horario_fin'],
-            fecha['intervalo_minutos']
-        )
-        
-        intervalos_con_disponibilidad = []
-        for hora in intervalos:
-            ocupado = (fecha['fecha_iso'], hora) in ocupados_set
-            intervalos_con_disponibilidad.append({
-                'hora': hora,
-                'ocupado': ocupado
-            })
-            todos_los_horarios.add(hora)
-        
-        fechas_con_intervalos.append({
-            **fecha,
-            'intervalos': intervalos_con_disponibilidad
-        })
-    
-    # Crear matriz ordenada por horario
-    horarios_ordenados = sorted(todos_los_horarios)
-    matriz_turnos = []
-    
-    for hora in horarios_ordenados:
-        fila = {
-            'hora': hora,
-            'celdas': []
+    # Buscar paciente si se proporciona DNI
+    if dni:
+        paciente = Paciente.objects.filter(dni=dni).first()
+
+    # Obtener días y horarios de atención del médico
+    dias_atencion = HorarioAtencion.objects.filter(medico=medico)
+    dias_mostrados = [
+        {
+            'dia': d.get_dia_display(),
+            'horario_inicio': d.hora_inicio.strftime("%H:%M"),
+            'horario_fin': d.hora_fin.strftime("%H:%M"),
+            'intervalo': d.intervalo_minutos,
         }
-        
-        for fecha in fechas_con_intervalos:
-            # Buscar el intervalo correspondiente a esta hora
-            intervalo_encontrado = None
-            for intervalo in fecha['intervalos']:
-                if intervalo['hora'] == hora:
-                    intervalo_encontrado = intervalo
-                    break
-            
-            if intervalo_encontrado:
-                fila['celdas'].append({
-                    'fecha_formateada': fecha['fecha_formateada'],
-                    'fecha_iso': fecha['fecha_iso'],
-                    'hora': hora,
-                    'ocupado': intervalo_encontrado['ocupado'],
-                    'disponible': not intervalo_encontrado['ocupado']
+        for d in dias_atencion
+    ]
+
+    # Armar calendario mensual
+    primer_dia_mes = datetime(anio, mes, 1).date()
+    _, dias_en_mes = monthrange(anio, mes)
+    calendario = []
+
+    primer_lunes = primer_dia_mes - timedelta(days=primer_dia_mes.weekday())
+
+    for i in range(42):  # 6 semanas (7x6=42 días)
+        dia = primer_lunes + timedelta(days=i)
+        es_del_mes = dia.month == mes
+        atiende = dias_atencion.filter(dia=dia.weekday()).exists()
+
+        calendario.append({
+            'fecha': dia,
+            'es_del_mes': es_del_mes,
+            'atiende': atiende
+        })
+
+    # Calcular turnos disponibles
+    matriz_turnos = []
+    if fecha_seleccionada:
+        dia_semana = fecha_seleccionada.weekday()
+        horarios = dias_atencion.filter(dia=dia_semana)
+
+        for horario in horarios:
+            hora_inicio = datetime.combine(fecha_seleccionada, horario.hora_inicio)
+            hora_fin = datetime.combine(fecha_seleccionada, horario.hora_fin)
+            intervalo = timedelta(minutes=horario.intervalo_minutos)
+
+            hora_actual = hora_inicio
+            while hora_actual < hora_fin:
+                hora_time = hora_actual.time()
+                turno_existente = Turno.objects.filter(
+                    medico=medico,
+                    fecha=fecha_seleccionada,
+                    hora=hora_time
+                ).first()
+
+                matriz_turnos.append({
+                    'hora': hora_time.strftime("%H:%M"),
+                    'ocupado': turno_existente is not None
                 })
+
+                hora_actual += intervalo
+
+    # Procesar asignación de turno
+    if request.method == "POST" and request.POST.get('accion') == 'reservar_turno':
+        fecha = request.POST.get('fecha')
+        hora_str = request.POST.get('hora')
+        dni_post = request.POST.get('dni')
+        paciente = Paciente.objects.filter(dni=dni_post).first()
+
+        if paciente:
+            try:
+                fecha_dt = datetime.strptime(fecha, "%Y-%m-%d").date()
+                hora_time = datetime.strptime(hora_str, "%H:%M").time()
+            except ValueError:
+                messages.error(request, "Fecha u hora inválida.")
+                return redirect(request.path)
+
+            ya_ocupado = Turno.objects.filter(medico=medico, fecha=fecha_dt, hora=hora_time).exists()
+
+            if not ya_ocupado:
+                Turno.objects.create(
+                    medico=medico,
+                    paciente=paciente,
+                    fecha=fecha_dt,
+                    hora=hora_time,
+                )
+                messages.success(request, f"Turno asignado a {paciente.apellido}, {paciente.nombre} el {fecha_dt.strftime('%d/%m/%Y')} a las {hora_str}.")
+                return redirect(request.path + f"?mes={mes}&anio={anio}&fecha={fecha}&dni={dni_post}")
             else:
-                # El médico no atiende a esta hora en este día
-                fila['celdas'].append({
-                    'fecha_formateada': fecha['fecha_formateada'],
-                    'fecha_iso': fecha['fecha_iso'],
-                    'hora': hora,
-                    'ocupado': True,  # Marcamos como ocupado lo que no está disponible
-                    'disponible': False,
-                    'no_atiende': True
-                })
-        
-        matriz_turnos.append(fila)
-    
-    return matriz_turnos
+                messages.error(request, "Este turno ya fue asignado.")
+        else:
+            messages.error(request, "Paciente no encontrado.")
 
-def procesar_formulario_turno(request, medico):
-    """
-    Procesa el formulario de asignación de turno.
-    """
-    dni = request.POST.get('dni', '').strip()
-    fecha_str = request.POST.get('fecha')
-    hora = request.POST.get('hora')
-    
-    # Validaciones
-    if not dni:
-        messages.error(request, 'Debe ingresar un DNI.')
-        return redirect('otorgar_turno', medico_id=medico.id)
-    
-    paciente = buscar_paciente_por_dni(dni)
-    if not paciente:
-        messages.error(request, 'No se encontró un paciente con ese DNI.')
-        return redirect('otorgar_turno', medico_id=medico.id)
-    
-    if not fecha_str or not hora:
-        messages.error(request, 'Debe seleccionar fecha y hora para el turno.')
-        return redirect('otorgar_turno', medico_id=medico.id)
-    
-    # Procesar fecha
-    try:
-        fecha_obj = parse_date(fecha_str)
-        if not fecha_obj:
-            raise ValueError("Fecha inválida")
-    except (ValueError, TypeError):
-        messages.error(request, 'Formato de fecha inválido.')
-        return redirect('otorgar_turno', medico_id=medico.id)
-    
-    # Verificar que el turno no esté ocupado
-    if Turno.objects.filter(medico=medico, fecha=fecha_obj, hora=hora).exists():
-        messages.error(request, 'El turno ya está ocupado, por favor elija otro horario.')
-        return redirect('otorgar_turno', medico_id=medico.id)
-    
-    # Verificar que el paciente no tenga otro turno el mismo día con el mismo médico
-    if Turno.objects.filter(medico=medico, paciente=paciente, fecha=fecha_obj).exists():
-        messages.error(request, 'El paciente ya tiene un turno ese día con este médico.')
-        return redirect('otorgar_turno', medico_id=medico.id)
-    
-    # Crear el turno
-    try:
-        Turno.objects.create(
-            medico=medico,
-            paciente=paciente,
-            fecha=fecha_obj,
-            hora=hora
-        )
-        messages.success(
-            request,
-            f'Turno asignado exitosamente para {paciente.nombre} {paciente.apellido} '
-            f'el {fecha_obj.strftime("%d/%m/%Y")} a las {hora}.'
-        )
-        return redirect('inicio')
-        
-    except Exception as e:
-        messages.error(request, 'Error al crear el turno. Intente nuevamente.')
-        # En producción, loggear el error
-        print(f"Error creando turno: {e}")
-        return redirect('otorgar_turno', medico_id=medico.id)
+    contexto = {
+        'medico': medico,
+        'mes': mes,
+        'anio': anio,
+        'mes_anterior': (mes - 1) if mes > 1 else 12,
+        'anio_anterior': (anio - 1) if mes == 1 else anio,
+        'mes_siguiente': (mes + 1) if mes < 12 else 1,
+        'anio_siguiente': (anio + 1) if mes == 12 else anio,
+        'fecha_seleccionada': fecha_seleccionada,
+        'calendario': calendario,
+        'dias_mostrados': dias_mostrados,
+        'matriz_turnos': matriz_turnos,
+        'dni': dni,
+        'paciente': paciente
+    }
 
+    return render(request, 'gestion/otorgar_turno.html', contexto)
 
-def modificar_paciente(request, dni):
-    # Intentamos obtener el paciente por DNI, si no existe da error 404
-    paciente = get_object_or_404(Paciente, dni=dni)
-
-    if request.method == 'POST':
-        # Aquí procesarías el formulario de modificación (a implementar)
-        # Por ahora solo redirigimos o mostramos mensaje
-        return HttpResponse(f"Modificación guardada para paciente con DNI: {dni}")
-
-    # Si es GET mostramos un formulario simple (o algo para que no falle)
-    return render(request, 'gestion/modificar_paciente.html', {'paciente': paciente})
 
 def registrar_paciente(request, dni):
     if request.method == 'POST':
         form = PacienteForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('inicio')  # Cambiá esto por la URL a donde quieras redirigir
+            return redirect('inicio')
     else:
         form = PacienteForm(initial={'dni': dni})
     return render(request, 'gestion/registrar_paciente.html', {'form': form})
 
+
 def consultar_paciente(request):
     dni = request.GET.get('dni')
-    paciente = None
-    if dni:
-        try:
-            paciente = Paciente.objects.get(dni=dni)
-        except Paciente.DoesNotExist:
-            paciente = None
-
-    contexto = {
+    paciente = Paciente.objects.filter(dni=dni).first() if dni else None
+    return render(request, 'gestion/consultar_paciente.html', {
         'dni': dni,
-        'paciente': paciente,
-    }
-    return render(request, 'gestion/consultar_paciente.html', contexto)
+        'paciente': paciente
+    })
+
+
+def modificar_paciente(request, dni):
+    paciente = get_object_or_404(Paciente, dni=dni)
+    if request.method == 'POST':
+        for campo in ['sexo', 'apellido', 'nombre', 'fecha_nacimiento', 'telefono_celular',
+                      'telefono_fijo', 'obra_social', 'domicilio', 'localidad']:
+            setattr(paciente, campo, request.POST.get(campo))
+        paciente.save()
+        return redirect('inicio')
+    return render(request, 'gestion/modificar_paciente.html', {'paciente': paciente})
+
 
 def tabla_turnos(request):
     horarios = ['08:00', '08:30', '09:00', '09:30']
@@ -335,3 +221,26 @@ def tabla_turnos(request):
         'horarios': horarios,
         'turnos': turnos
     })
+
+
+def generar_calendario(medico, anio, mes):
+    calendario = []
+    primer_dia = date(anio, mes, 1)
+    dia_inicio = primer_dia - timedelta(days=primer_dia.weekday())  # lunes previo
+    dia_actual = dia_inicio
+
+    dias_atencion = [d.dia.upper() for d in medico.dias.all()]  # ['LUNES', 'MARTES', ...]
+
+    for _ in range(6):
+        semana = []
+        for _ in range(7):
+            nombre_dia = calendar.day_name[dia_actual.weekday()].upper()
+            semana.append({
+                'fecha': dia_actual,
+                'es_del_mes': dia_actual.month == mes,
+                'atiende': nombre_dia in dias_atencion
+            })
+            dia_actual += timedelta(days=1)
+        calendario.append(semana)
+
+    return calendario
