@@ -18,24 +18,25 @@ class Medico(models.Model):
         return f"{self.apellido}, {self.nombre}"
 
 DIAS_SEMANA = [
-    ('LUNES', 'Lunes'),
-    ('MARTES', 'Martes'),
-    ('MIERCOLES', 'Miércoles'),
-    ('JUEVES', 'Jueves'),
-    ('VIERNES', 'Viernes'),
-    ('SABADO', 'Sábado'),
-    ('DOMINGO', 'Domingo'),
+    (0, 'LUNES'),
+    (1, 'MARTES'),
+    (2, 'MIERCOLES'),
+    (3, 'JUEVES'),
+    (4, 'VIERNES'),
+    (5, 'SABADO'),
+    (6, 'DOMINGO'),
 ]
 
 class DiaAtencion(models.Model):
     medico = models.ForeignKey(Medico, on_delete=models.CASCADE, related_name='dias_atencion')
-    dia = models.CharField(max_length=10, choices=DIAS_SEMANA)
+    dia = models.IntegerField(choices=DIAS_SEMANA)  # número de día guardado como texto
     horario_inicio = models.TimeField()
     horario_fin = models.TimeField()
     intervalo_minutos = models.IntegerField()
 
     def __str__(self):
-        return f"{self.medico} - {self.get_dia_display()} de {self.horario_inicio.strftime('%H:%M')} a {self.horario_fin.strftime('%H:%M')} cada {self.intervalo_minutos} min"
+        return f"{self.medico} - {self.get_dia_display()} {self.horario_inicio}-{self.horario_fin}"
+
 
     def clean(self):
         # Validar que horario_fin sea posterior a horario_inicio

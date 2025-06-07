@@ -11,9 +11,12 @@ from django.contrib.auth.decorators import login_required
 from .forms import PacienteForm
 from .forms import DiaNoLaborableForm
 
-from .models import Especialidad,Medico, Paciente, Turno, HorarioAtencion,DiaNoLaborable
+from .models import Medico, DiaAtencion, Turno, Paciente, DiaNoLaborable , Especialidad
 
 import calendar
+from datetime import datetime, timedelta
+from calendar import monthrange
+
 
 # Mapeo de nombre de día a weekday int
 DIA_A_INT = {
@@ -50,6 +53,8 @@ def inicio(request):
     return render(request, 'gestion/inicio.html', context)
 
 
+
+
 def otorgar_turno(request, medico_id):
     medico = get_object_or_404(Medico, id=medico_id)
     hoy = timezone.now().date()
@@ -71,13 +76,15 @@ def otorgar_turno(request, medico_id):
     if dni:
         paciente = Paciente.objects.filter(dni=dni).first()
 
-    dias_atencion = HorarioAtencion.objects.filter(medico=medico)
+    # Usar DiaAtencion (no HorarioAtencion)
+    dias_atencion = DiaAtencion.objects.filter(medico=medico)
+
     dias_mostrados = [
         {
             'dia': d.get_dia_display(),
-            'numero_dia': d.dia,
-            'horario_inicio': d.hora_inicio.strftime("%H:%M"),
-            'horario_fin': d.hora_fin.strftime("%H:%M"),
+            'numero_dia': int(d.dia),  # convertir a int para usar weekday()
+            'horario_inicio': d.horario_inicio.strftime("%H:%M"),
+            'horario_fin': d.horario_fin.strftime("%H:%M"),
             'intervalo': d.intervalo_minutos,
         }
         for d in dias_atencion
@@ -87,7 +94,7 @@ def otorgar_turno(request, medico_id):
     _, dias_en_mes = monthrange(anio, mes)
     primer_lunes = primer_dia_mes - timedelta(days=primer_dia_mes.weekday())
 
-    # ** Obtener días no laborables para este médico **
+    # Obtener días no laborables para este médico
     dias_no_laborables = set(
         DiaNoLaborable.objects.filter(medico=medico).values_list('fecha', flat=True)
     )
@@ -97,25 +104,26 @@ def otorgar_turno(request, medico_id):
     for i in range(42):  # 6 semanas x 7 días
         dia = primer_lunes + timedelta(days=i)
         es_del_mes = dia.month == mes
-        atiende = dias_atencion.filter(dia=dia.weekday()).exists()
+        # El campo dia en modelo es string número, convertir weekday a str para filtrar
+        atiende = dias_atencion.filter(dia=str(dia.weekday())).exists()
 
-        es_no_laborable = dia in dias_no_laborables  # <= chequeo si día está en no laborables
+        es_no_laborable = dia in dias_no_laborables
 
         calendario.append({
             'fecha': dia,
             'es_del_mes': es_del_mes,
             'atiende': atiende,
-            'es_no_laborable': es_no_laborable,  # agrego campo para usar en template
+            'es_no_laborable': es_no_laborable,
         })
 
     matriz_turnos = []
     if fecha_seleccionada:
-        dia_semana = fecha_seleccionada.weekday()
+        dia_semana = str(fecha_seleccionada.weekday())
         horarios = dias_atencion.filter(dia=dia_semana)
 
         for horario in horarios:
-            hora_inicio = datetime.combine(fecha_seleccionada, horario.hora_inicio)
-            hora_fin = datetime.combine(fecha_seleccionada, horario.hora_fin)
+            hora_inicio = datetime.combine(fecha_seleccionada, horario.horario_inicio)
+            hora_fin = datetime.combine(fecha_seleccionada, horario.horario_fin)
             intervalo = timedelta(minutes=horario.intervalo_minutos)
 
             hora_actual = hora_inicio
