@@ -6,13 +6,15 @@ from calendar import monthrange
 from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 
-from .models import Especialidad, Medico, Paciente, Turno, DiaAtencion
 from .forms import PacienteForm
+from .forms import DiaNoLaborableForm
 
-from .models import Medico, Paciente, Turno, HorarioAtencion
+from .models import Especialidad,Medico, Paciente, Turno, HorarioAtencion,DiaNoLaborable
 
 import calendar
+
 # Mapeo de nombre de día a weekday int
 DIA_A_INT = {
     'LUNES': 0, 'MARTES': 1, 'MIÉRCOLES': 2, 'MIERCOLES': 2,
@@ -52,7 +54,6 @@ def otorgar_turno(request, medico_id):
     medico = get_object_or_404(Medico, id=medico_id)
     hoy = timezone.now().date()
 
-    # Parámetros GET
     mes = int(request.GET.get('mes', hoy.month))
     anio = int(request.GET.get('anio', hoy.year))
     fecha_str = request.GET.get('fecha')
@@ -61,22 +62,20 @@ def otorgar_turno(request, medico_id):
     fecha_seleccionada = None
     paciente = None
 
-    # Convertir fecha seleccionada a objeto date
     if fecha_str:
         try:
             fecha_seleccionada = datetime.strptime(fecha_str, "%Y-%m-%d").date()
         except ValueError:
             fecha_seleccionada = None
 
-    # Buscar paciente si se proporciona DNI
     if dni:
         paciente = Paciente.objects.filter(dni=dni).first()
 
-    # Obtener días y horarios de atención del médico
     dias_atencion = HorarioAtencion.objects.filter(medico=medico)
     dias_mostrados = [
         {
             'dia': d.get_dia_display(),
+            'numero_dia': d.dia,
             'horario_inicio': d.hora_inicio.strftime("%H:%M"),
             'horario_fin': d.hora_fin.strftime("%H:%M"),
             'intervalo': d.intervalo_minutos,
@@ -84,25 +83,31 @@ def otorgar_turno(request, medico_id):
         for d in dias_atencion
     ]
 
-    # Armar calendario mensual
     primer_dia_mes = datetime(anio, mes, 1).date()
     _, dias_en_mes = monthrange(anio, mes)
-    calendario = []
-
     primer_lunes = primer_dia_mes - timedelta(days=primer_dia_mes.weekday())
 
-    for i in range(42):  # 6 semanas (7x6=42 días)
+    # ** Obtener días no laborables para este médico **
+    dias_no_laborables = set(
+        DiaNoLaborable.objects.filter(medico=medico).values_list('fecha', flat=True)
+    )
+
+    calendario = []
+
+    for i in range(42):  # 6 semanas x 7 días
         dia = primer_lunes + timedelta(days=i)
         es_del_mes = dia.month == mes
         atiende = dias_atencion.filter(dia=dia.weekday()).exists()
 
+        es_no_laborable = dia in dias_no_laborables  # <= chequeo si día está en no laborables
+
         calendario.append({
             'fecha': dia,
             'es_del_mes': es_del_mes,
-            'atiende': atiende
+            'atiende': atiende,
+            'es_no_laborable': es_no_laborable,  # agrego campo para usar en template
         })
 
-    # Calcular turnos disponibles
     matriz_turnos = []
     if fecha_seleccionada:
         dia_semana = fecha_seleccionada.weekday()
@@ -129,7 +134,6 @@ def otorgar_turno(request, medico_id):
 
                 hora_actual += intervalo
 
-    # Procesar asignación de turno
     if request.method == "POST" and request.POST.get('accion') == 'reservar_turno':
         fecha = request.POST.get('fecha')
         hora_str = request.POST.get('hora')
@@ -173,7 +177,8 @@ def otorgar_turno(request, medico_id):
         'dias_mostrados': dias_mostrados,
         'matriz_turnos': matriz_turnos,
         'dni': dni,
-        'paciente': paciente
+        'paciente': paciente,
+        'numero_dia_seleccionado': fecha_seleccionada.weekday() if fecha_seleccionada else None,
     }
 
     return render(request, 'gestion/otorgar_turno.html', contexto)
@@ -244,3 +249,22 @@ def generar_calendario(medico, anio, mes):
         calendario.append(semana)
 
     return calendario
+
+@login_required
+def crear_licencia(request):
+    if request.method == 'POST':
+        form = DiaNoLaborableForm(request.POST)
+        if form.is_valid():
+            fecha = form.cleaned_data['fecha']
+            medico = form.cleaned_data['medico']
+
+            if DiaNoLaborable.objects.filter(fecha=fecha, medico=medico).exists():
+                messages.warning(request, 'Ese día ya está marcado como no laborable.')
+            else:
+                form.save()
+                messages.success(request, 'Día marcado como no laborable correctamente.')
+            return redirect('crear_licencia')
+    else:
+        form = DiaNoLaborableForm()
+
+    return render(request, 'crear_licencia.html', {'form': form})

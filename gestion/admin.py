@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django import forms
 from .models import Especialidad, Medico, DiaAtencion, Paciente, Turno
+from .models import HorarioAtencion
 
 class DiaAtencionInlineForm(forms.ModelForm):
     class Meta:
@@ -24,6 +25,6 @@ class MedicoAdmin(admin.ModelAdmin):
 admin.site.register(Especialidad)
 admin.site.register(Paciente)
 admin.site.register(Turno)
-
+admin.site.register(HorarioAtencion)
 
 

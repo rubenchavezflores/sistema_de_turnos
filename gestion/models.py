@@ -1,5 +1,7 @@
 from django.db import models
 from datetime import date
+from django.db import models
+
 
 class Especialidad(models.Model):
     nombre = models.CharField(max_length=100)
@@ -76,7 +78,7 @@ class Turno(models.Model):
         return f"Turno con {self.medico} el {self.fecha.strftime('%d/%m/%Y')} a las {self.hora.strftime('%H:%M')}"
 # gestion/models.py
 
-from django.db import models
+
 
 class HorarioAtencion(models.Model):
     medico = models.ForeignKey('Medico', on_delete=models.CASCADE)
@@ -92,3 +94,11 @@ class HorarioAtencion(models.Model):
 
     def __str__(self):
         return f"{self.medico} - {self.dia}: {self.hora_inicio} a {self.hora_fin}"
+
+class DiaNoLaborable(models.Model):
+    medico = models.ForeignKey(Medico, on_delete=models.CASCADE, null=True, blank=True)
+    fecha = models.DateField()
+    motivo = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return f"{self.fecha} - {self.motivo or 'No laborable'}"

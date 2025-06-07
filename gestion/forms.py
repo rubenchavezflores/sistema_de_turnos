@@ -1,5 +1,7 @@
 from django import forms
 from .models import Paciente
+from .models import DiaNoLaborable, Medico
+
 
 class PacienteForm(forms.ModelForm):
     class Meta:
@@ -8,4 +10,12 @@ class PacienteForm(forms.ModelForm):
         widgets = {
             'fecha_nacimiento': forms.DateInput(attrs={'type': 'date'}),
             'dni': forms.TextInput(attrs={'readonly': 'readonly'}),
+        }
+
+class DiaNoLaborableForm(forms.ModelForm):
+    class Meta:
+        model = DiaNoLaborable
+        fields = ['medico', 'fecha', 'motivo']
+        widgets = {
+            'fecha': forms.DateInput(attrs={'type': 'date'}),
         }
