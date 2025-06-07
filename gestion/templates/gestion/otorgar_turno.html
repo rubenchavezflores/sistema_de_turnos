@@ -4,19 +4,7 @@
 <div class="container-fluid">
   <h2>Otorgar Turno: {{ medico.apellido|upper }}, {{ medico.nombre|title }} - {{ medico.especialidad.nombre|upper }}</h2>
 
-  {% if dias_mostrados %}
-    <!-- Línea resumen de días y horarios de atención -->
-    <p>
-      <strong>Días y horarios de atención:</strong>
-      {% for dia in dias_mostrados %}
-        {{ dia.dia }} de {{ dia.horario_inicio }} a {{ dia.horario_fin }} (intervalo cada {{ dia.intervalo }} min){% if not forloop.last %}, {% endif %}
-      {% endfor %}
-    </p>
-  {% else %}
-    <p><strong>Este médico no tiene días de atención configurados.</strong></p>
-  {% endif %}
-
-  <div class="row">
+    <div class="row">
     <!-- COLUMNA IZQUIERDA -->
     <div class="col-md-7">
       {% if dias_mostrados %}
@@ -168,7 +156,7 @@
                     <button type="submit" class="btn btn-sm btn-primary">Reservar</button>
                   </form>
                   {% else %}
-                  <span class="text-muted">Buscar paciente</span>
+                  <span class="text-muted">Confirmar</span>
                   {% endif %}
                 </td>
               </tr>
