@@ -1,81 +1,12 @@
 {% extends 'gestion/base.html' %}
+{% load static %}  <!-- Esto permite usar archivos estáticos -->
 
 {% block title %}Inicio{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Bienvenido al Sistema de Turnos</h1>
-<a href="{% url 'consultar_paciente' %}" class="btn btn-warning mb-3">Consultar Paciente</a>
-
-<!-- SECCIÓN 1: Buscar por Especialidad -->
-<div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-        Buscar Médicos por Especialidad
-    </div>
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-            <div class="row mb-3">
-                <div class="col-md-10">
-                    <label for="especialidad" class="form-label">Seleccionar Especialidad:</label>
-                    <select name="especialidad" class="form-select">
-                        <option value="">-- Seleccionar --</option>
-                        {% for especialidad in especialidades %}
-                            <option value="{{ especialidad.id }}">{{ especialidad.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2 align-self-end">
-                    <button type="submit" class="btn btn-success" name="buscar_por" value="especialidad">Buscar</button>
-                </div>
-            </div>
-        </form>
-    </div>
+<div class="text-center my-5">
+    <h1 class="mb-4">Bienvenido al Sistema de Turnos Médicos</h1>
+    <img src="{% static 'img/medicos_turnos.jpg' %}" alt="Sistema de Turnos Médicos" class="img-fluid rounded" style="max-width: 500px;">
+    <p class="mt-4 fs-5 text-muted">Gestione sus turnos médicos de forma sencilla y rápida.</p>
 </div>
-
-<!-- SECCIÓN 2: Buscar por Médico -->
-<div class="card mb-4">
-    <div class="card-header bg-info text-white">
-        Buscar por Nombre del Médico
-    </div>
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-            <div class="row mb-3">
-                <div class="col-md-10">
-                    <label for="medico" class="form-label">Seleccionar Médico:</label>
-                    <select name="medico" class="form-select">
-                        <option value="">-- Seleccionar --</option>
-                        {% for medico in medicos %}
-                            <option value="{{ medico.id }}">{{ medico.apellido }}, {{ medico.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2 align-self-end">
-                    <button type="submit" class="btn btn-primary" name="buscar_por" value="medico">Buscar</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- RESULTADOS -->
-{% if resultados %}
-    <h3>Resultados:</h3>
-    <ul class="list-group">
-        {% for medico in resultados %}
-            <li class="list-group-item">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <strong>{{ medico.apellido }}, {{ medico.nombre }}</strong><br>
-                        <small class="text-muted">{{ medico.especialidad.nombre }}</small>
-                    </div>
-                    <a href="{% url 'otorgar_turno' medico.id %}" class="btn btn-success btn-sm">Otorgar Turno</a>
-                </div>
-            </li>
-        {% endfor %}
-    </ul>
-{% endif %}
 {% endblock %}
-
-
-

@@ -12,6 +12,7 @@ from .forms import PacienteForm
 from .forms import DiaNoLaborableForm
 
 from .models import Medico, DiaAtencion, Turno, Paciente, DiaNoLaborable , Especialidad
+from .models import Especialidad, Medico
 
 import calendar
 from datetime import datetime, timedelta
@@ -276,3 +277,26 @@ def crear_licencia(request):
         form = DiaNoLaborableForm()
 
     return render(request, 'crear_licencia.html', {'form': form})
+def buscar_por_especialidad(request):
+    especialidades = Especialidad.objects.all()
+    resultados = None
+    if request.method == "POST":
+        especialidad_id = request.POST.get('especialidad')
+        if especialidad_id:
+            resultados = Medico.objects.filter(especialidad_id=especialidad_id)
+    return render(request, 'gestion/buscar_por_especialidad.html', {
+        'especialidades': especialidades,
+        'resultados': resultados,
+    })
+
+def buscar_por_apellido(request):
+    medicos = Medico.objects.all()
+    resultados = None
+    if request.method == "POST":
+        apellido = request.POST.get('apellido', '').strip()
+        if apellido:
+            resultados = Medico.objects.filter(apellido__icontains=apellido)
+    return render(request, 'gestion/buscar_por_apellido.html', {
+        'medicos': medicos,
+        'resultados': resultados,
+    })

@@ -10,5 +10,7 @@ urlpatterns = [
     path('modificar_paciente/<str:dni>/', views.modificar_paciente, name='modificar_paciente'),
     path('tabla_turnos/', views.tabla_turnos, name='tabla_turnos'),
     path('crear_licencia/', views.crear_licencia, name='crear_licencia'),
+    path('buscar/especialidad/', views.buscar_por_especialidad, name='buscar_por_especialidad'),
+    path('buscar/apellido/', views.buscar_por_apellido, name='buscar_por_apellido'),
 
 ]

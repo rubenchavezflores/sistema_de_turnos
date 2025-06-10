@@ -57,7 +57,10 @@
             {% if forloop.counter|divisibleby:7 or forloop.last %}</div>{% endif %}
           {% endfor %}
         </div>
-        <div class="card-footer text-muted"><span class="badge bg-outline-primary me-2" style="border:1px solid#0d6efd;">●</span>Días disponibles{% if fecha_seleccionada %}<br><span class="badge bg-primary me-2">●</span>Día seleccionado{% endif %}</div>
+        <div class="card-footer text-muted">
+          <span class="badge bg-outline-primary me-2" style="border:1px solid#0d6efd;">●</span>Días disponibles
+          {% if fecha_seleccionada %}<br><span class="badge bg-primary me-2">●</span>Día seleccionado{% endif %}
+        </div>
       </div>
     </div>
   </div>
@@ -88,7 +91,9 @@
               {% for fila in matriz_turnos %}
               <tr>
                 <td>{{ fila.hora }}</td>
-                {% if hora_busqueda == fila.hora and paciente %}
+                {% if fila.ocupado %}
+                  <td colspan="8"><span class="badge bg-danger">Ocupado</span></td>
+                {% elif hora_busqueda == fila.hora and paciente %}
                   <td><button class="btn btn-sm btn-outline-secondary" disabled>🔍</button></td>
                   <td>{{ paciente.apellido }}</td>
                   <td>{{ paciente.nombre }}</td>
@@ -97,7 +102,6 @@
                   <td>{{ paciente.obra_social }}</td>
                   <td>{{ paciente.localidad }}</td>
                   <td>
-                    {% if not fila.ocupado %}
                     <form method="post">
                       {% csrf_token %}
                       <input type="hidden" name="accion" value="reservar_turno">
@@ -106,9 +110,6 @@
                       <input type="hidden" name="dni" value="{{ paciente.dni }}">
                       <button type="submit" class="btn btn-sm btn-success">✓</button>
                     </form>
-                    {% else %}
-                    <span class="badge bg-danger">Ocupado</span>
-                    {% endif %}
                   </td>
                 {% else %}
                   <td>

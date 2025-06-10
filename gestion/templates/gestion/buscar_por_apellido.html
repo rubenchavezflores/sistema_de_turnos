@@ -1,0 +1,37 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Buscar por Apellido del Médico{% endblock %}
+
+{% block content %}
+<h2>Buscar Médicos por Apellido</h2>
+
+<form method="post" class="mb-4">
+    {% csrf_token %}
+    <div class="row g-3 align-items-center">
+        <div class="col-md-8">
+            <label for="apellido" class="form-label">Apellido del Médico:</label>
+            <input type="text" name="apellido" id="apellido" class="form-control" placeholder="Ingrese apellido" required />
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </div>
+</form>
+
+{% if resultados %}
+    <h3>Resultados:</h3>
+    <ul class="list-group">
+        {% for medico in resultados %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>{{ medico.apellido }}, {{ medico.nombre }}</strong> - {{ medico.especialidad.nombre }}
+                </div>
+                <a href="{% url 'otorgar_turno' medico.id %}" class="btn btn-success btn-sm">Otorgar Turno</a>
+            </li>
+        {% empty %}
+            <li class="list-group-item">No se encontraron médicos con ese apellido.</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+{% endblock %}
