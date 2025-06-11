@@ -7,6 +7,8 @@ from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 
 from .forms import PacienteForm
 from .forms import DiaNoLaborableForm
@@ -17,6 +19,7 @@ from .models import Especialidad, Medico
 import calendar
 from datetime import datetime, timedelta
 from calendar import monthrange
+
 
 
 # Mapeo de nombre de día a weekday int
@@ -192,36 +195,91 @@ def otorgar_turno(request, medico_id):
 
     return render(request, 'gestion/otorgar_turno.html', contexto)
 
-
-def registrar_paciente(request, dni):
+def registrar_paciente(request, dni=None):
     if request.method == 'POST':
-        form = PacienteForm(request.POST)
+        dni = request.POST.get('dni')
+        if Paciente.objects.filter(dni=dni).exists():
+            messages.error(request, "⚠️ Ya existe un paciente con ese DNI.")
+            return render(request, 'gestion/registrar_paciente.html', {'form': PacienteForm(request.POST)})
+
+        # Convertir a mayúsculas
+        apellido1 = request.POST.get('apellido1', '').strip().upper()
+        apellido2 = request.POST.get('apellido2', '').strip().upper()
+        nombres = request.POST.get('nombres', '').strip().upper()
+
+        data = request.POST.copy()
+        data['apellido'] = f"{apellido1} {apellido2}".strip()
+        data['nombre'] = nombres
+        data['obra_social'] = data.get('obra_social', '').upper()
+        data['domicilio'] = data.get('domicilio', '').upper()
+        data['localidad'] = data.get('localidad', '').upper()
+
+        form = PacienteForm(data)
         if form.is_valid():
             form.save()
+            messages.success(request, "✅ Paciente registrado con éxito.")
             return redirect('inicio')
+        else:
+            messages.error(request, "❌ Error al registrar paciente. Verifique los datos ingresados.")
     else:
-        form = PacienteForm(initial={'dni': dni})
+        form = PacienteForm()
     return render(request, 'gestion/registrar_paciente.html', {'form': form})
+
+
 
 
 def consultar_paciente(request):
     dni = request.GET.get('dni')
     paciente = Paciente.objects.filter(dni=dni).first() if dni else None
+
+    if paciente:
+        # Convertimos todos los datos a mayúsculas para mostrar
+        paciente.nombre = paciente.nombre.upper()
+        paciente.apellido = paciente.apellido.upper()
+        paciente.obra_social = paciente.obra_social.upper() if paciente.obra_social else ''
+        paciente.localidad = paciente.localidad.upper() if paciente.localidad else ''
+        paciente.domicilio = paciente.domicilio.upper() if paciente.domicilio else ''
+
     return render(request, 'gestion/consultar_paciente.html', {
         'dni': dni,
         'paciente': paciente
     })
 
 
+
+
+
 def modificar_paciente(request, dni):
     paciente = get_object_or_404(Paciente, dni=dni)
+
+    # Separar apellidos en la vista
+    apellidos = paciente.apellido.split(' ') if paciente.apellido else ['', '']
+    apellido1 = apellidos[0]
+    apellido2 = apellidos[1] if len(apellidos) > 1 else ''
+
     if request.method == 'POST':
-        for campo in ['sexo', 'apellido', 'nombre', 'fecha_nacimiento', 'telefono_celular',
-                      'telefono_fijo', 'obra_social', 'domicilio', 'localidad']:
-            setattr(paciente, campo, request.POST.get(campo))
+        paciente.sexo = request.POST.get('sexo')
+        # Unir apellidos antes de guardar
+        apellido1_post = request.POST.get('apellido1', '').strip()
+        apellido2_post = request.POST.get('apellido2', '').strip()
+        paciente.apellido = apellido1_post + (' ' + apellido2_post if apellido2_post else '')
+        paciente.nombre = request.POST.get('nombres')
+        paciente.fecha_nacimiento = request.POST.get('fecha_nacimiento')
+        paciente.telefono_celular = request.POST.get('telefono_celular')
+        paciente.telefono_fijo = request.POST.get('telefono_fijo')
+        paciente.obra_social = request.POST.get('obra_social')
+        paciente.domicilio = request.POST.get('domicilio')
+        paciente.localidad = request.POST.get('localidad')
         paciente.save()
-        return redirect('inicio')
-    return render(request, 'gestion/modificar_paciente.html', {'paciente': paciente})
+        return redirect('inicio')  # O la url que quieras
+
+    context = {
+        'paciente': paciente,
+        'apellido1': apellido1,
+        'apellido2': apellido2,
+    }
+    return render(request, 'gestion/modificar_paciente.html', context)
+
 
 
 def tabla_turnos(request):
@@ -277,6 +335,7 @@ def crear_licencia(request):
         form = DiaNoLaborableForm()
 
     return render(request, 'crear_licencia.html', {'form': form})
+
 def buscar_por_especialidad(request):
     especialidades = Especialidad.objects.all()
     resultados = None
@@ -300,3 +359,11 @@ def buscar_por_apellido(request):
         'medicos': medicos,
         'resultados': resultados,
     })
+
+@require_GET
+def verificar_dni(request):
+    dni = request.GET.get('dni', None)
+    existe = False
+    if dni:
+        existe = Paciente.objects.filter(dni=dni).exists()
+    return JsonResponse({'existe': existe})

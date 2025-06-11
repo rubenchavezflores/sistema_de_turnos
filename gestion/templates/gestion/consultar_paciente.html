@@ -5,12 +5,58 @@
 {% block content %}
 <h2 class="my-3">Consultar Paciente</h2>
 
-<form method="GET" action="{% url 'consultar_paciente' %}" class="form-inline my-2">
+<form method="GET" action="{% url 'consultar_paciente' %}" class="form-inline my-2" novalidate>
   <label for="dni">DNI:</label>
-  <input type="text" name="dni" id="dni" class="form-control form-control-sm mx-2" style="width: 150px;" placeholder="Ej: 12345678">
+  <input 
+    type="text" 
+    name="dni" 
+    id="dni" 
+    class="form-control form-control-sm mx-2" 
+    style="width: 150px;" 
+    placeholder="Ej: 12345678" 
+    pattern="^\d{7,8}$" 
+    maxlength="8" 
+    required
+    title="Ingrese sólo números, 7 u 8 dígitos"
+  >
   <button type="submit" class="btn btn-primary btn-sm">Buscar</button>
 </form>
 
+
+<div id="dni-error" class="text-danger mt-1" style="display:none;">⚠️ Ingrese sólo números, 7 u 8 dígitos.</div>
+
+<script>
+  const dniInput = document.getElementById('dni');
+  const form = dniInput.closest('form');
+  const errorDiv = document.getElementById('dni-error');
+
+  dniInput.addEventListener('input', function() {
+    // Eliminar cualquier caracter que no sea número
+    this.value = this.value.replace(/\D/g, '');
+    // Ocultar error si está visible mientras escriben
+    errorDiv.style.display = 'none';
+  });
+
+  dniInput.addEventListener('paste', function(e) {
+    e.preventDefault();
+    const paste = (e.clipboardData || window.clipboardData).getData('text');
+    const onlyNumbers = paste.replace(/\D/g, '');
+    document.execCommand('insertText', false, onlyNumbers);
+    errorDiv.style.display = 'none';
+  });
+
+  form.addEventListener('submit', function(e) {
+    // Validar patrón del DNI antes de enviar
+    const dniVal = dniInput.value;
+    const dniRegex = /^\d{7,8}$/;
+
+    if (!dniRegex.test(dniVal)) {
+      e.preventDefault();
+      errorDiv.style.display = 'block';
+      dniInput.focus();
+    }
+  });
+</script>
 
 {% if dni %}
     {% if paciente %}
@@ -20,8 +66,8 @@
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th>Apellido</th>
-                    <th>Nombre</th>
+                    <th>Apellidos</th>
+                    <th>Nombres</th>
                     <th>Sexo</th>
                     <th>Edad</th>
                     <th>Obra Social</th>

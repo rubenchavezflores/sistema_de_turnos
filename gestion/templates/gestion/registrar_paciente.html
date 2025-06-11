@@ -1,91 +1,247 @@
 {% extends 'gestion/base.html' %}
-
 {% block content %}
-<h2>Registrar Paciente</h2>
 
-<form method="post" novalidate>
+<form method="post" class="mt-4" novalidate>
     {% csrf_token %}
-    {{ form.non_field_errors }}
+    <div class="card shadow-lg border-0 rounded-4 p-4">
+        <h4 class="mb-4 text-primary fw-bold">🧾 Registrar Nuevo Paciente</h4>
 
-    <div class="mb-3">
-        {{ form.dni.label_tag }} 
-        {{ form.dni }}
-        {{ form.dni.errors }}
+        <div class="row g-3">
+
+            <!-- DNI -->
+            <div class="col-md-6">
+                <label class="form-label">DNI:</label>
+                <input type="text" id="dni" name="dni" class="form-control border-secondary" required pattern="\d{7,8}"
+                    autofocus title="Ingrese un DNI válido de 7 u 8 dígitos"
+                    oninvalid="this.setCustomValidity('Debe ingresar un DNI válido')"
+                    oninput="this.setCustomValidity(''); this.value = this.value.slice(0, 8);">Hola
+                <div id="dni-feedback" class="form-text text-danger mt-1"></div>
+            </div>
+
+            <!-- Sexo -->
+            <div class="col-md-6">
+                <label class="form-label">Sexo:</label>
+                <select name="sexo" class="form-select border-secondary" required>
+                    <option value="">-- Seleccionar --</option>
+                    <option value="M" {% if paciente.sexo == 'M' %}selected{% endif %}>Masculino</option>
+                    <option value="F" {% if paciente.sexo == 'F' %}selected{% endif %}>Femenino</option>
+                    <option value="O" {% if paciente.sexo == 'O' %}selected{% endif %}>Otro</option>
+
+                </select>
+                <div class="form-text text-primary mt-1">
+                    Por favor, seleccione el sexo del paciente para completar correctamente el formulario.
+                </div>
+            </div>
+
+
+            <!-- Apellidos -->
+            <div class="col-md-6">
+                <label class="form-label">Primer Apellido:</label>
+                <input type="text" name="apellido1" class="form-control border-secondary" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Segundo Apellido (opcional):</label>
+                <input type="text" name="apellido2" class="form-control border-secondary">
+            </div>
+
+            <!-- Nombres -->
+            <div class="col-md-6">
+                <label class="form-label">Nombres:</label>
+                <input type="text" name="nombres" class="form-control border-secondary" required>
+            </div>
+
+            <!-- Fecha de nacimiento -->
+            <div class="col-md-6">
+                <label class="form-label">Fecha de Nacimiento:</label>
+                <input type="date" name="fecha_nacimiento" id="fecha_nacimiento" class="form-control border-secondary"
+                    required>
+            </div>
+
+            <!-- Teléfonos -->
+            <div class="col-md-6">
+                <label class="form-label">Teléfono Celular:</label>
+                <input type="text" name="telefono_celular" class="form-control border-secondary" required
+                    pattern="\d{10}" title="Debe tener 10 números">
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Teléfono Fijo (opcional):</label>
+                <input type="text" name="telefono_fijo" class="form-control border-secondary" pattern="\d{10}"
+                    title="Debe tener 10 números si se ingresa">
+            </div>
+
+            <!-- Obra Social -->
+            <div class="col-md-6">
+                <label class="form-label">Obra Social:</label>
+                <input type="text" name="obra_social" class="form-control border-secondary" required>
+            </div>
+
+            <!-- Domicilio -->
+            <div class="col-md-6">
+                <label class="form-label">Domicilio:</label>
+                <input type="text" name="domicilio" class="form-control border-secondary" required>
+            </div>
+
+            <!-- Localidad -->
+            <div class="col-md-6">
+                <label class="form-label">Localidad:</label>
+                <input type="text" id="localidad" name="localidad" class="form-control border-secondary" required>
+            </div>
+        </div>
+
+        <div class="text-end mt-4">
+            <button type="submit" id="guardarBtn" class="btn btn-lg btn-success rounded-pill px-4 shadow-sm"
+                disabled>Guardar</button>
+        </div>
     </div>
-
-    <div class="mb-3">
-        {{ form.sexo.label_tag }} 
-        {{ form.sexo }}
-        {{ form.sexo.errors }}
-    </div>
-
-    <div class="mb-3">
-        {{ form.apellido.label_tag }} 
-        {{ form.apellido }}
-        {{ form.apellido.errors }}
-    </div>
-
-    <div class="mb-3">
-        {{ form.nombre.label_tag }} 
-        {{ form.nombre }}
-        {{ form.nombre.errors }}
-    </div>
-
-    <div class="mb-3">
-        {{ form.fecha_nacimiento.label_tag }} 
-        {{ form.fecha_nacimiento }}
-        {{ form.fecha_nacimiento.errors }}
-    </div>
-
-    <div class="mb-3">
-        <label>Edad:</label>
-        <input type="text" id="edad" class="form-control" readonly>
-    </div>
-
-    <div class="mb-3">
-        {{ form.telefono_celular.label_tag }} 
-        {{ form.telefono_celular }}
-        {{ form.telefono_celular.errors }}
-    </div>
-
-    <div class="mb-3">
-        {{ form.telefono_fijo.label_tag }} 
-        {{ form.telefono_fijo }}
-        {{ form.telefono_fijo.errors }}
-    </div>
-
-    <div class="mb-3">
-        {{ form.obra_social.label_tag }} 
-        {{ form.obra_social }}
-        {{ form.obra_social.errors }}
-    </div>
-
-    <div class="mb-3">
-        {{ form.domicilio.label_tag }} 
-        {{ form.domicilio }}
-        {{ form.domicilio.errors }}
-    </div>
-
-    <div class="mb-3">
-        {{ form.localidad.label_tag }} 
-        {{ form.localidad }}
-        {{ form.localidad.errors }}
-    </div>
-
-    <button type="submit" class="btn btn-success">Guardar</button>
 </form>
 
 <script>
-document.getElementById('id_fecha_nacimiento').addEventListener('change', function() {
-    const fecha = new Date(this.value);
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - fecha.getFullYear();
-    const m = hoy.getMonth() - fecha.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
-        edad--;
+    const dniInput = document.getElementById('dni');
+    const feedback = document.getElementById('dni-feedback');
+    const guardarBtn = document.getElementById('guardarBtn');
+    const requiredFields = document.querySelectorAll('input[required], select[required]');
+    const formElements = Array.from(document.querySelectorAll('input, select, textarea'))
+        .filter(el => el !== dniInput);
+
+    let dniValido = false;
+
+    function bloquearCampos(bloquear) {
+        formElements.forEach(field => {
+            field.disabled = bloquear;
+        });
     }
-    document.getElementById('edad').value = edad >= 0 ? edad : '';
-});
+
+    function verificarFormularioCompleto() {
+        let valido = dniValido;
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                valido = false;
+            }
+        });
+        guardarBtn.disabled = !valido;
+    }
+
+    async function validarDniAsync(dni) {
+        if (!/^\d{7,8}$/.test(dni)) {
+            feedback.textContent = '⚠️ DNI inválido. Debe tener 7 u 8 dígitos.';
+            dniInput.classList.add('is-invalid');
+            dniValido = false;
+            bloquearCampos(true);
+            guardarBtn.disabled = true;
+            return false;
+        }
+
+        try {
+            const response = await fetch(`/verificar-dni/?dni=${dni}`);
+            const data = await response.json();
+
+            if (data.existe) {
+                feedback.textContent = '❌ Ya existe un paciente con ese DNI.';
+                dniInput.classList.add('is-invalid');
+                dniValido = false;
+                bloquearCampos(true);
+                guardarBtn.disabled = true;
+                return false;
+            } else {
+                feedback.textContent = '';
+                dniInput.classList.remove('is-invalid');
+                dniValido = true;
+                bloquearCampos(false);
+                verificarFormularioCompleto();
+                return true;
+            }
+        } catch (error) {
+            feedback.textContent = '⚠️ Error al verificar el DNI.';
+            dniInput.classList.add('is-invalid');
+            dniValido = false;
+            bloquearCampos(true);
+            guardarBtn.disabled = true;
+            return false;
+        }
+    }
+
+    dniInput.addEventListener('blur', () => {
+        validarDniAsync(dniInput.value.trim());
+    });
+
+    dniInput.addEventListener('keydown', async function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const dni = dniInput.value.trim();
+            const valido = await validarDniAsync(dni);
+
+            if (valido) {
+                // Pasar al siguiente campo habilitado
+                const fields = Array.from(document.querySelectorAll('input, select, textarea'))
+                    .filter(el => !el.disabled && el.offsetParent !== null);
+                const index = fields.indexOf(dniInput);
+                if (index > -1 && index < fields.length - 1) {
+                    fields[index + 1].focus();
+                }
+            } else {
+                dniInput.focus();
+            }
+        }
+    });
+
+    // Salto con Enter para los demás campos
+    document.querySelector('form').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            const elements = Array.from(this.querySelectorAll('input, select, textarea'))
+                .filter(el => !el.disabled && el.offsetParent !== null);
+            const index = elements.indexOf(document.activeElement);
+
+            if (document.activeElement === dniInput) return;
+
+            if (index > -1 && index < elements.length - 1) {
+                e.preventDefault();
+                const actual = elements[index];
+                if (actual.checkValidity()) {
+                    elements[index + 1].focus();
+                } else {
+                    actual.reportValidity();
+                }
+            }
+        }
+    });
+
+    dniInput.addEventListener('focusout', function () {
+        if (!dniValido) {
+            setTimeout(() => dniInput.focus(), 0);
+        }
+    });
+
+    requiredFields.forEach(field => {
+        field.addEventListener('input', verificarFormularioCompleto);
+    });
+
+    document.getElementById('fecha_nacimiento').addEventListener('change', function () {
+        const fecha = new Date(this.value);
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - fecha.getFullYear();
+        const m = hoy.getMonth() - fecha.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+            edad--;
+        }
+
+        let edadDiv = document.getElementById('edad-estimada');
+        if (!edadDiv) {
+            edadDiv = document.createElement('div');
+            edadDiv.id = 'edad-estimada';
+            edadDiv.className = 'form-text text-info mt-1';
+            this.parentNode.appendChild(edadDiv);
+        }
+        edadDiv.textContent = `🧓 Edad estimada: ${edad} años`;
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        bloquearCampos(true);
+        guardarBtn.disabled = true;
+    });
 </script>
+
+
+
 
 {% endblock %}

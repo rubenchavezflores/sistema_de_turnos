@@ -1,78 +1,100 @@
-<form method="post">
+{% extends 'gestion/base.html' %}
+
+{% block content %}
+<form method="post" class="mt-4">
     {% csrf_token %}
 
-    <div class="mb-3">
-        <label>DNI:</label>
-        <input type="text" name="dni" class="form-control" value="{{ paciente.dni }}" readonly>
-    </div>
+    <div class="card shadow-lg border-0 rounded-4 p-4">
+        <h4 class="mb-4 text-primary fw-bold">
+            🧾 Ficha del Paciente
+        </h4>
 
-    <div class="mb-3">
-        <label>Sexo:</label>
-        <select name="sexo" class="form-select" required>
-            <option value="">-- Seleccionar --</option>
-            <option value="M" {% if paciente.sexo == 'M' %}selected{% endif %}>Masculino</option>
-            <option value="F" {% if paciente.sexo == 'F' %}selected{% endif %}>Femenino</option>
-            <option value="O" {% if paciente.sexo == 'O' %}selected{% endif %}>Otro</option>
-        </select>
-    </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">DNI:</label>
+                <input type="text" name="dni" class="form-control border-secondary" value="{{ paciente.dni }}" readonly>
+            </div>
 
-    <div class="mb-3">
-        <label>Apellido:</label>
-        <input type="text" name="apellido" class="form-control" value="{{ paciente.apellido }}" required>
-    </div>
+            <div class="col-md-6">
+                <label class="form-label">Sexo:</label>
+                <select name="sexo" class="form-select border-secondary" required>
+                    <option value="">-- Seleccionar --</option>
+                    <option value="M" {% if paciente.sexo == 'M' %}selected{% endif %}>Masculino</option>
+                    <option value="F" {% if paciente.sexo == 'F' %}selected{% endif %}>Femenino</option>
+                    <option value="O" {% if paciente.sexo == 'O' %}selected{% endif %}>Otro</option>
+                </select>
+            </div>
 
-    <div class="mb-3">
-        <label>Nombre:</label>
-        <input type="text" name="nombre" class="form-control" value="{{ paciente.nombre }}" required>
-    </div>
+            <!-- Primer y segundo apellido -->
+            <div class="col-md-6">
+                <label class="form-label">Primer Apellido:</label>
+                <input type="text" name="apellido1" class="form-control border-secondary" value="{{ apellido1 }}" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Segundo Apellido:</label>
+                <input type="text" name="apellido2" class="form-control border-secondary" value="{{ apellido2 }}">
+            </div>
 
-    <div class="mb-3">
-        <label>Fecha de Nacimiento:</label>
-        <input type="date" name="fecha_nacimiento" id="fecha_nacimiento" class="form-control" value="{{ paciente.fecha_nacimiento|date:'Y-m-d' }}">
-    </div>
+            <!-- Nombres -->
+            <div class="col-md-6">
+                <label class="form-label">Nombres:</label>
+                <input type="text" name="nombres" class="form-control border-secondary" value="{{ paciente.nombre }}" required>
+            </div>
 
-    <div class="mb-3">
-        <label>Edad:</label>
-        <input type="text" id="edad" class="form-control" value="{{ paciente.edad }}" readonly>
-    </div>
+            <div class="col-md-6">
+                <label class="form-label">Fecha de Nacimiento:</label>
+                <input type="date" name="fecha_nacimiento" id="fecha_nacimiento" class="form-control border-secondary" value="{{ paciente.fecha_nacimiento|date:'Y-m-d' }}">
+            </div>
 
-    <div class="mb-3">
-        <label>Teléfono Celular:</label>
-        <input type="text" name="telefono_celular" class="form-control" value="{{ paciente.telefono_celular }}">
-    </div>
+            <div class="col-md-6">
+                <label class="form-label">Edad:</label>
+                <input type="text" id="edad" class="form-control border-secondary bg-light" value="{{ paciente.edad }}" readonly>
+            </div>
 
-    <div class="mb-3">
-        <label>Teléfono Fijo:</label>
-        <input type="text" name="telefono_fijo" class="form-control" value="{{ paciente.telefono_fijo }}">
-    </div>
+            <div class="col-md-6">
+                <label class="form-label">Teléfono Celular:</label>
+                <input type="text" name="telefono_celular" class="form-control border-secondary" value="{{ paciente.telefono_celular }}">
+            </div>
 
-    <div class="mb-3">
-        <label>Obra Social:</label>
-        <input type="text" name="obra_social" class="form-control" value="{{ paciente.obra_social }}">
-    </div>
+            <div class="col-md-6">
+                <label class="form-label">Teléfono Fijo:</label>
+                <input type="text" name="telefono_fijo" class="form-control border-secondary" value="{{ paciente.telefono_fijo }}">
+            </div>
 
-    <div class="mb-3">
-        <label>Domicilio:</label>
-        <input type="text" name="domicilio" class="form-control" value="{{ paciente.domicilio }}">
-    </div>
+            <div class="col-md-6">
+                <label class="form-label">Obra Social:</label>
+                <input type="text" name="obra_social" class="form-control border-secondary" value="{{ paciente.obra_social }}">
+            </div>
 
-    <div class="mb-3">
-        <label>Localidad:</label>
-        <input type="text" name="localidad" class="form-control" value="{{ paciente.localidad }}">
-    </div>
+            <div class="col-md-6">
+                <label class="form-label">Domicilio:</label>
+                <input type="text" name="domicilio" class="form-control border-secondary" value="{{ paciente.domicilio }}">
+            </div>
 
-    <button type="submit" class="btn btn-success">Guardar</button>
+            <div class="col-md-6">
+                <label class="form-label">Localidad:</label>
+                <input type="text" name="localidad" class="form-control border-secondary" value="{{ paciente.localidad }}">
+            </div>
+        </div>
+
+        <div class="text-end mt-4">
+            <button type="submit" class="btn btn-lg btn-success rounded-pill px-4 shadow-sm">
+               Guardar
+            </button>
+        </div>
+    </div>
 </form>
 
 <script>
-document.getElementById('fecha_nacimiento').addEventListener('change', function () {
-    const fecha = new Date(this.value);
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - fecha.getFullYear();
-    const m = hoy.getMonth() - fecha.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
-        edad--;
-    }
-    document.getElementById('edad').value = edad >= 0 ? edad : '';
-});
+    document.getElementById('fecha_nacimiento').addEventListener('change', function () {
+        const fecha = new Date(this.value);
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - fecha.getFullYear();
+        const m = hoy.getMonth() - fecha.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+            edad--;
+        }
+        document.getElementById('edad').value = edad >= 0 ? edad : '';
+    });
 </script>
+{% endblock %}
