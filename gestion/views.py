@@ -360,10 +360,49 @@ def buscar_por_apellido(request):
         'resultados': resultados,
     })
 
+from django.views.decorators.http import require_GET
+from django.http import JsonResponse
+from .models import Paciente
+
 @require_GET
 def verificar_dni(request):
-    dni = request.GET.get('dni', None)
-    existe = False
-    if dni:
-        existe = Paciente.objects.filter(dni=dni).exists()
-    return JsonResponse({'existe': existe})
+    try:
+        dni = request.GET.get('dni', None)
+        existe = False
+        if dni:
+            existe = Paciente.objects.filter(dni=dni).exists()
+        return JsonResponse({'existe': existe})
+    except Exception as e:
+        print(f"Error en verificar_dni: {e}")
+        return JsonResponse({'error': 'Ocurrió un error interno'}, status=500)
+
+
+
+def buscar_paciente_ajax(request):
+    dni = request.GET.get('dni')
+    if not dni:
+        return JsonResponse({'existe': False, 'error': 'No se recibió DNI'}, status=400)
+
+    try:
+        paciente = Paciente.objects.get(dni=dni)
+        data = {
+            'existe': True,
+            'apellido': paciente.apellido,
+            'nombre': paciente.nombre,
+            'sexo': paciente.sexo,
+            'fecha_nacimiento': paciente.fecha_nacimiento.isoformat() if paciente.fecha_nacimiento else None,
+            'obra_social': paciente.obra_social or '',
+            'localidad': paciente.localidad,
+        }
+        return JsonResponse(data)
+    except Paciente.DoesNotExist:
+        return JsonResponse({'existe': False})
+    except Exception as e:
+        # Si hay otro error inesperado, lo registramos (en consola o logs)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al buscar paciente: {e}")
+        print("Error detallado:", e)  # <-- agrega esto
+        return JsonResponse({'existe': False, 'error': 'Error interno del servidor'}, status=500)
+
+

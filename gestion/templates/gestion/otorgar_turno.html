@@ -1,30 +1,59 @@
 {% extends 'gestion/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+  .scale-40 {
+    transform: scale(0.4);
+    transform-origin: top left;
+  }
+
+  .input-group.dni-busqueda {
+    max-width: 130px;
+    position: relative;
+  }
+
+  .input-group.dni-busqueda input[type="text"] {
+    width: 100%;
+    padding-right: 2.5rem;
+    box-sizing: border-box;
+  }
+
+  .input-group.dni-busqueda button {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding: 0 0.6rem;
+    z-index: 2;
+    font-size: 0.9rem;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
   <h2>Otorgar Turno: {{ medico.apellido|upper }}, {{ medico.nombre|title }} - {{ medico.especialidad.nombre|upper }}</h2>
 
-  <div class="row">
-    <div class="col-md-7">
-      {% if dias_mostrados %}
-      <div class="mb-4">
-        <h4>Días de atención detallados:</h4>
-        <ul>
-          {% for d in dias_mostrados %}
-          <li>{{ d.dia }}: de {{ d.horario_inicio }} a {{ d.horario_fin }} hs (cada {{ d.intervalo }} min)</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-      {% if fecha_seleccionada %}
-      <div class="mb-4">
-        <h6>Turnos para {{ fecha_seleccionada|date:"l d/m/Y" }}</h6>
-      </div>
-      {% endif %}
-    </div>
+  {% if dni_no_existe %}
+  <div class="alert alert-danger">No existe paciente con ese DNI.</div>
+  {% endif %}
 
-    <!-- CALENDARIO -->
-    <div class="col-md-5">
+  {% if dias_mostrados %}
+  <div class="mb-4">
+    <h4>Días de atención detallados:</h4>
+    <ul>
+      {% for d in dias_mostrados %}
+      <li>{{ d.dia }}: de {{ d.horario_inicio }} a {{ d.horario_fin }} hs (cada {{ d.intervalo }} min)</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="row">
+    <div class="col-md-5 scale-40">
       <div class="card">
         <div class="card-header text-center">
           <h5>Calendario de {{ mes }}/{{ anio }}</h5>
@@ -33,67 +62,66 @@
             <a href="?mes={{ mes_siguiente }}&anio={{ anio_siguiente }}{% if dni %}&dni={{ dni }}{% endif %}" class="btn btn-secondary btn-sm">Siguiente »</a>
           </div>
         </div>
-        <div class="card-body p-3">
-          <div class="row text-center mb-2">
+        <div class="card-body p-2">
+          <div class="row text-center mb-1">
             {% for d in "LMXJVSD" %}
             <div class="col"><small class="text-muted fw-bold">{{ d }}</small></div>
             {% endfor %}
           </div>
           {% for dia in calendario %}
-            {% if forloop.counter0|divisibleby:7 %}<div class="row text-center mb-1">{% endif %}
+          {% if forloop.counter0|divisibleby:7 %}<div class="row text-center mb-1">{% endif %}
             <div class="col p-1">
               {% if dia.es_del_mes %}
-                {% if dia.es_no_laborable %}
-                  <div class="d-flex align-items-center justify-content-center bg-danger text-white rounded" style="height: 40px;" title="No laborable">{{ dia.fecha.day }}</div>
-                {% elif dia.atiende %}
-                  <a href="?mes={{ mes }}&anio={{ anio }}&fecha={{ dia.fecha|date:'Y-m-d' }}{% if dni %}&dni={{ dni }}{% endif %}" class="btn btn-outline-primary w-100" style="height:40px;">{{ dia.fecha.day }}</a>
-                {% else %}
-                  <div class="d-flex align-items-center justify-content-center text-muted" style="height:40px;">{{ dia.fecha.day }}</div>
-                {% endif %}
+              {% if dia.es_no_laborable %}
+              <div class="d-flex align-items-center justify-content-center bg-danger text-white rounded" style="height: 30px;" title="No laborable">{{ dia.fecha.day }}</div>
+              {% elif dia.atiende %}
+              <a href="?mes={{ mes }}&anio={{ anio }}&fecha={{ dia.fecha|date:'Y-m-d' }}{% if dni %}&dni={{ dni }}{% endif %}" class="btn btn-outline-primary w-100" style="height:30px;">{{ dia.fecha.day }}</a>
               {% else %}
-                <div class="d-flex align-items-center justify-content-center text-muted" style="height:40px;opacity:0.4;">{{ dia.fecha.day }}</div>
+              <div class="d-flex align-items-center justify-content-center text-muted" style="height:30px;">{{ dia.fecha.day }}</div>
+              {% endif %}
+              {% else %}
+              <div class="d-flex align-items-center justify-content-center text-muted" style="height:30px;opacity:0.4;">{{ dia.fecha.day }}</div>
               {% endif %}
             </div>
-            {% if forloop.counter|divisibleby:7 or forloop.last %}</div>{% endif %}
+          {% if forloop.counter|divisibleby:7 or forloop.last %}</div>{% endif %}
           {% endfor %}
         </div>
-        <div class="card-footer text-muted">
+        <div class="card-footer text-muted" style="font-size: 0.8rem;">
           <span class="badge bg-outline-primary me-2" style="border:1px solid#0d6efd;">●</span>Días disponibles
           {% if fecha_seleccionada %}<br><span class="badge bg-primary me-2">●</span>Día seleccionado{% endif %}
         </div>
       </div>
     </div>
-  </div>
 
-  {% if fecha_seleccionada %}
-  <div class="mt-4">
-    <div class="card">
-      <div class="card-header">
-        <h4 class="mb-0">Turnos del día {{ fecha_seleccionada|date:"d/m/Y" }}</h4>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-bordered text-center align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>🕒 Horario</th>
-                <th>Buscar</th>
-                <th>Apellido</th>
-                <th>Nombre</th>
-                <th>Sexo</th>
-                <th>Edad</th>
-                <th>Obra Social</th>
-                <th>Localidad</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for fila in matriz_turnos %}
-              <tr>
-                <td>{{ fila.hora }}</td>
-                {% if fila.ocupado %}
+    {% if fecha_seleccionada %}
+    <div class="col-md-7 scale-40">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0" style="font-size:1.2rem;">Turnos del día {{ fecha_seleccionada|date:"d/m/Y" }}</h4>
+        </div>
+        <div class="card-body p-2">
+          <div class="table-responsive">
+            <table class="table table-bordered text-center align-middle" style="font-size: 0.85rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>🕒</th>
+                  <th>Buscar DNI</th>
+                  <th>Apellido</th>
+                  <th>Nombre</th>
+                  <th>Sexo</th>
+                  <th>Edad</th>
+                  <th>Obra Social</th>
+                  <th>Localidad</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for fila in matriz_turnos %}
+                <tr>
+                  <td>{{ fila.hora }}</td>
+                  {% if fila.ocupado %}
                   <td colspan="8"><span class="badge bg-danger">Ocupado</span></td>
-                {% elif hora_busqueda == fila.hora and paciente %}
+                  {% elif hora_busqueda == fila.hora and paciente %}
                   <td><button class="btn btn-sm btn-outline-secondary" disabled>🔍</button></td>
                   <td>{{ paciente.apellido }}</td>
                   <td>{{ paciente.nombre }}</td>
@@ -111,29 +139,96 @@
                       <button type="submit" class="btn btn-sm btn-success">✓</button>
                     </form>
                   </td>
-                {% else %}
+                  {% else %}
                   <td>
-                    <form method="get" class="d-flex justify-content-center">
+                    <form class="dni-busqueda d-flex justify-content-center" onsubmit="return buscarPaciente(event, this)">
                       <input type="hidden" name="mes" value="{{ mes }}">
                       <input type="hidden" name="anio" value="{{ anio }}">
                       <input type="hidden" name="fecha" value="{{ fecha_seleccionada }}">
                       <input type="hidden" name="hora_busqueda" value="{{ fila.hora }}">
-                      <div class="input-group input-group-sm">
-                        <input type="text" name="dni" class="form-control" placeholder="DNI" maxlength="10" required pattern="[0-9]{7,8}">
-                        <button class="btn btn-outline-primary" type="submit">🔍</button>
-                      </div>
+                      <input type="text" name="dni" class="form-control form-control-sm" placeholder="DNI" maxlength="8" pattern="[0-9]{7,8}" required title="Ingrese 7 u 8 dígitos numéricos" value="{{ dni|default:'' }}">
+                      <button class="btn btn-outline-primary btn-sm" type="submit">🔍</button>
                     </form>
                   </td>
-                  <td colspan="7" class="text-muted">Primero buscá al paciente</td>
-                {% endif %}
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                  <td class="apellido text-muted"></td>
+                  <td class="nombre text-muted"></td>
+                  <td class="sexo text-muted"></td>
+                  <td class="edad text-muted"></td>
+                  <td class="obra-social text-muted"></td>
+                  <td class="localidad text-muted"></td>
+                  <td class="accion text-muted" style="font-size: 0.8rem;">Primero buscá al paciente</td>
+                  {% endif %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
-  {% endif %}
+
+  <script>
+    const urlBuscarPaciente = "{% url 'buscar_paciente_ajax' %}";
+
+    async function buscarPaciente(event, form) {
+      event.preventDefault();
+
+      const dni = form.querySelector('input[name="dni"]').value.trim();
+      if (!dni.match(/^\d{7,8}$/)) {
+        alert('Por favor, ingrese un DNI válido (7 u 8 dígitos numéricos).');
+        return false;
+      }
+
+      try {
+        const response = await fetch(`${urlBuscarPaciente}?dni=${dni}`);
+        if (!response.ok) throw new Error('Error en la respuesta de la búsqueda');
+
+        const data = await response.json();
+        const fila = form.closest('tr');
+
+        if (data.existe) {
+          fila.querySelector('.apellido').textContent = data.apellido;
+          fila.querySelector('.nombre').textContent = data.nombre;
+          fila.querySelector('.sexo').textContent = data.sexo;
+          fila.querySelector('.edad').textContent = calculaEdad(data.fecha_nacimiento);
+          fila.querySelector('.obra-social').textContent = data.obra_social;
+          fila.querySelector('.localidad').textContent = data.localidad || '';
+          fila.querySelector('.accion').innerHTML = `
+            <form method="post">
+              <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+              <input type="hidden" name="accion" value="reservar_turno">
+              <input type="hidden" name="fecha" value="${form.querySelector('input[name="fecha"]').value}">
+              <input type="hidden" name="hora" value="${form.querySelector('input[name="hora_busqueda"]').value}">
+              <input type="hidden" name="dni" value="${dni}">
+              <button type="submit" class="btn btn-sm btn-success">✓</button>
+            </form>`;
+        } else {
+          alert('No existe paciente con ese DNI.');
+          for (let i = 3; i <= 8; i++) {
+            fila.querySelector(`td:nth-child(${i})`).textContent = '';
+          }
+        }
+
+      } catch (error) {
+        console.error('Error buscando paciente:', error);
+        alert('Error al buscar paciente, inténtelo más tarde.');
+      }
+
+      return false;
+    }
+
+    function calculaEdad(fechaNac) {
+      const hoy = new Date();
+      const nac = new Date(fechaNac);
+      let edad = hoy.getFullYear() - nac.getFullYear();
+      const mes = hoy.getMonth() - nac.getMonth();
+      if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) {
+        edad--;
+      }
+      return edad;
+    }
+  </script>
 </div>
 {% endblock %}
