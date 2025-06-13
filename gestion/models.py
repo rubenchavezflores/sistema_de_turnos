@@ -74,6 +74,7 @@ class Turno(models.Model):
     paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE)
     fecha = models.DateField()
     hora = models.TimeField()
+    estado = models.CharField(max_length=20, default='otorgado')  # ✔️ Este es el nuevo campo
 
     def __str__(self):
         return f"Turno con {self.medico} el {self.fecha.strftime('%d/%m/%Y')} a las {self.hora.strftime('%H:%M')}"

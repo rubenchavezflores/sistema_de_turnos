@@ -14,6 +14,9 @@ urlpatterns = [
     path('buscar/apellido/', views.buscar_por_apellido, name='buscar_por_apellido'),
     path('verificar-dni/', views.verificar_dni, name='verificar_dni'),
     path('buscar_paciente_ajax/', views.buscar_paciente_ajax, name='buscar_paciente_ajax'),
+    path('guardar-turno/', views.guardar_turno, name='guardar_turno'),
+    path('turnos/medico/<int:medico_id>/', views.turnos_por_medico, name='turnos_por_medico'),
+
 
 
 ]

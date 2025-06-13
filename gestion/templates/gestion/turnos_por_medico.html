@@ -1,0 +1,21 @@
+<h2>Turnos otorgados para el Dr. {{ medico.apellido }} {{ medico.nombre }}</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Paciente</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for turno in turnos %}
+        <tr>
+            <td>{{ turno.fecha }}</td>
+            <td>{{ turno.hora }}</td>
+            <td>{{ turno.paciente.apellido }} {{ turno.paciente.nombre }}</td>
+            <td>{{ turno.estado }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

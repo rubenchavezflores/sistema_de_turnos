@@ -121,32 +121,13 @@
                   <td>{{ fila.hora }}</td>
                   {% if fila.ocupado %}
                   <td colspan="8"><span class="badge bg-danger">Ocupado</span></td>
-                  {% elif hora_busqueda == fila.hora and paciente %}
-                  <td><button class="btn btn-sm btn-outline-secondary" disabled>🔍</button></td>
-                  <td>{{ paciente.apellido }}</td>
-                  <td>{{ paciente.nombre }}</td>
-                  <td>{{ paciente.sexo }}</td>
-                  <td>{{ paciente.edad }}</td>
-                  <td>{{ paciente.obra_social }}</td>
-                  <td>{{ paciente.localidad }}</td>
-                  <td>
-                    <form method="post">
-                      {% csrf_token %}
-                      <input type="hidden" name="accion" value="reservar_turno">
-                      <input type="hidden" name="fecha" value="{{ fecha_seleccionada }}">
-                      <input type="hidden" name="hora" value="{{ fila.hora }}">
-                      <input type="hidden" name="dni" value="{{ paciente.dni }}">
-                      <button type="submit" class="btn btn-sm btn-success">✓</button>
-                    </form>
-                  </td>
                   {% else %}
                   <td>
                     <form class="dni-busqueda d-flex justify-content-center" onsubmit="return buscarPaciente(event, this)">
-                      <input type="hidden" name="mes" value="{{ mes }}">
-                      <input type="hidden" name="anio" value="{{ anio }}">
                       <input type="hidden" name="fecha" value="{{ fecha_seleccionada }}">
                       <input type="hidden" name="hora_busqueda" value="{{ fila.hora }}">
-                      <input type="text" name="dni" class="form-control form-control-sm" placeholder="DNI" maxlength="8" pattern="[0-9]{7,8}" required title="Ingrese 7 u 8 dígitos numéricos" value="{{ dni|default:'' }}">
+                      <input type="hidden" name="medico_id" value="{{ medico.id }}">
+                      <input type="text" name="dni" class="form-control form-control-sm" placeholder="DNI" maxlength="8" pattern="[0-9]{7,8}" required>
                       <button class="btn btn-outline-primary btn-sm" type="submit">🔍</button>
                     </form>
                   </td>
@@ -170,65 +151,98 @@
   </div>
 
   <script>
-    const urlBuscarPaciente = "{% url 'buscar_paciente_ajax' %}";
+  const urlBuscarPaciente = "{% url 'buscar_paciente_ajax' %}";
+  const urlGuardarTurno = "{% url 'guardar_turno' %}";
 
-    async function buscarPaciente(event, form) {
-      event.preventDefault();
+  function calculaEdad(fecha_nacimiento) {
+    const hoy = new Date();
+    const nacimiento = new Date(fecha_nacimiento);
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const m = hoy.getMonth() - nacimiento.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
+      edad--;
+    }
+    return edad;
+  }
 
-      const dni = form.querySelector('input[name="dni"]').value.trim();
-      if (!dni.match(/^\d{7,8}$/)) {
-        alert('Por favor, ingrese un DNI válido (7 u 8 dígitos numéricos).');
-        return false;
-      }
+  function esFechaPasada(fechaStr) {
+    const fecha = new Date(fechaStr);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return fecha < hoy;
+  }
 
-      try {
-        const response = await fetch(`${urlBuscarPaciente}?dni=${dni}`);
-        if (!response.ok) throw new Error('Error en la respuesta de la búsqueda');
+  async function buscarPaciente(event, form) {
+    event.preventDefault();
 
-        const data = await response.json();
-        const fila = form.closest('tr');
-
-        if (data.existe) {
-          fila.querySelector('.apellido').textContent = data.apellido;
-          fila.querySelector('.nombre').textContent = data.nombre;
-          fila.querySelector('.sexo').textContent = data.sexo;
-          fila.querySelector('.edad').textContent = calculaEdad(data.fecha_nacimiento);
-          fila.querySelector('.obra-social').textContent = data.obra_social;
-          fila.querySelector('.localidad').textContent = data.localidad || '';
-          fila.querySelector('.accion').innerHTML = `
-            <form method="post">
-              <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-              <input type="hidden" name="accion" value="reservar_turno">
-              <input type="hidden" name="fecha" value="${form.querySelector('input[name="fecha"]').value}">
-              <input type="hidden" name="hora" value="${form.querySelector('input[name="hora_busqueda"]').value}">
-              <input type="hidden" name="dni" value="${dni}">
-              <button type="submit" class="btn btn-sm btn-success">✓</button>
-            </form>`;
-        } else {
-          alert('No existe paciente con ese DNI.');
-          for (let i = 3; i <= 8; i++) {
-            fila.querySelector(`td:nth-child(${i})`).textContent = '';
-          }
-        }
-
-      } catch (error) {
-        console.error('Error buscando paciente:', error);
-        alert('Error al buscar paciente, inténtelo más tarde.');
-      }
-
+    const dni = form.querySelector('input[name="dni"]').value.trim();
+    if (!dni.match(/^\d{7,8}$/)) {
+      alert('Por favor, ingrese un DNI válido (7 u 8 dígitos numéricos).');
       return false;
     }
 
-    function calculaEdad(fechaNac) {
-      const hoy = new Date();
-      const nac = new Date(fechaNac);
-      let edad = hoy.getFullYear() - nac.getFullYear();
-      const mes = hoy.getMonth() - nac.getMonth();
-      if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) {
-        edad--;
+    try {
+      const response = await fetch(`${urlBuscarPaciente}?dni=${dni}`);
+      if (!response.ok) throw new Error('Error en la búsqueda del paciente');
+      const data = await response.json();
+      const fila = form.closest('tr');
+
+      if (data.existe) {
+        fila.querySelector('.apellido').textContent = data.apellido;
+        fila.querySelector('.nombre').textContent = data.nombre;
+        fila.querySelector('.sexo').textContent = data.sexo;
+        fila.querySelector('.edad').textContent = calculaEdad(data.fecha_nacimiento);
+        fila.querySelector('.obra-social').textContent = data.obra_social;
+        fila.querySelector('.localidad').textContent = data.localidad;
+
+        const fechaRaw = form.querySelector('input[name="fecha"]').value;
+        const hora = form.querySelector('input[name="hora_busqueda"]').value;
+        const medicoId = form.querySelector('input[name="medico_id"]').value;
+
+        fila.querySelector('.accion').innerHTML = `
+          <button class="btn btn-sm btn-success">Guardar</button>
+        `;
+
+        fila.querySelector('.accion button').addEventListener('click', async () => {
+          const fechaObj = new Date(fechaRaw);
+          const fechaFormateada = fechaObj.toISOString().split('T')[0];
+
+          if (esFechaPasada(fechaFormateada)) {
+            alert("No se puede asignar un turno en una fecha pasada.");
+            return;
+          }
+
+          const resp = await fetch(urlGuardarTurno, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+              fecha: fechaFormateada,
+              hora: hora,
+              medico: medicoId,
+              paciente: data.id
+            })
+          });
+
+          if (resp.ok) {
+            fila.innerHTML = `<td>${hora}</td><td colspan="8"><span class="badge bg-success">Turno asignado</span></td>`;
+          } else {
+            alert("Error al guardar el turno.");
+          }
+        });
+
+      } else {
+        alert("Paciente no encontrado. Debe registrarlo primero.");
       }
-      return edad;
+
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Ocurrió un error al buscar el paciente.");
     }
-  </script>
+  }
+</script>
+
 </div>
 {% endblock %}

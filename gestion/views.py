@@ -1,7 +1,7 @@
 # views.py - Importaciones limpias y ordenadas
 
-from datetime import datetime, timedelta, time, date
-from calendar import monthrange
+from datetime import datetime, timedelta, date
+from calendar import monthrange, day_name
 
 from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
@@ -9,16 +9,15 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
 
-from .forms import PacienteForm
-from .forms import DiaNoLaborableForm
-
-from .models import Medico, DiaAtencion, Turno, Paciente, DiaNoLaborable , Especialidad
-from .models import Especialidad, Medico
+from .forms import PacienteForm, DiaNoLaborableForm
+from .models import Medico, DiaAtencion, Turno, Paciente, DiaNoLaborable, Especialidad
 
 import calendar
-from datetime import datetime, timedelta
-from calendar import monthrange
+
+import json
+
 
 
 
@@ -387,6 +386,7 @@ def buscar_paciente_ajax(request):
         paciente = Paciente.objects.get(dni=dni)
         data = {
             'existe': True,
+            'id': paciente.id,  # ← ESTA LÍNEA ES CLAVE
             'apellido': paciente.apellido,
             'nombre': paciente.nombre,
             'sexo': paciente.sexo,
@@ -404,5 +404,43 @@ def buscar_paciente_ajax(request):
         logger.error(f"Error al buscar paciente: {e}")
         print("Error detallado:", e)  # <-- agrega esto
         return JsonResponse({'existe': False, 'error': 'Error interno del servidor'}, status=500)
+    
+def turnos_por_medico(request, medico_id):
+    turnos = Turno.objects.filter(medico_id=medico_id).order_by('fecha', 'hora')
+    medico = Medico.objects.get(id=medico_id)
+    return render(request, 'turnos_por_medico.html', {'turnos': turnos, 'medico': medico})    
 
+
+@csrf_exempt
+def guardar_turno(request):
+    if request.method == 'POST':
+        try:
+            datos = json.loads(request.body)
+
+            fecha_str = datos.get("fecha")  # Ejemplo: "2025-06-17"
+            hora = datos.get("hora")
+            medico_id = datos.get("medico")
+            paciente_id = datos.get("paciente")
+
+            # Convertir string a objeto datetime.date
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+
+            # Validar que no exista un turno en esa fecha/hora para ese médico
+            if Turno.objects.filter(fecha=fecha, hora=hora, medico_id=medico_id).exists():
+                return JsonResponse({"error": "El turno ya está asignado"}, status=400)
+
+            # Crear el turno
+            Turno.objects.create(
+                fecha=fecha,
+                hora=hora,
+                medico_id=medico_id,
+                paciente_id=paciente_id,
+                estado='otorgado'
+            )
+
+            return JsonResponse({"mensaje": "Turno guardado correctamente"})
+        except Exception as e:
+            print("Error al guardar el turno:", e)
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Método no permitido"}, status=405)
 
