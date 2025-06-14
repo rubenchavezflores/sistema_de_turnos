@@ -187,40 +187,13 @@
         </div>
         
         <!-- Botones fijos -->
-        <div class="botones-fijos">
-          <div class="row">
-            <!-- Primera fila de botones -->
-            <div class="col-12 text-center mb-3">
-              <button id="btn-otorgar" class="btn btn-success me-2" onclick="otorgarTurno()" disabled>
-                <i class="fas fa-check"></i> Otorgar Turno
-              </button>
-              <button id="btn-cancelar" class="btn btn-secondary me-2" onclick="cancelarSeleccion()" disabled>
-                <i class="fas fa-times"></i> Cancelar
-              </button>
-              <button id="btn-eliminar" class="btn btn-danger me-2" onclick="eliminarTurno()" disabled>
-                <i class="fas fa-trash"></i> Eliminar Turno
-              </button>
-              <button id="btn-bloquear" class="btn btn-warning me-2" onclick="bloquearTurno()" disabled>
-                <i class="fas fa-lock"></i> Bloquear Turno
-              </button>
-            </div>
-            
-            <!-- Segunda fila de botones -->
-            <div class="col-12 text-center">
-              <button id="btn-llego" class="btn btn-info me-2" onclick="marcarLlego()" disabled>
-                <i class="fas fa-user-check"></i> Llegó
-              </button>
-              <button id="btn-atendido" class="btn btn-primary me-2" onclick="marcarAtendido()" disabled>
-                <i class="fas fa-user-md"></i> Atendido
-              </button>
-              <button id="btn-imprimir" class="btn btn-outline-dark me-2" onclick="imprimirTurno()" disabled>
-                <i class="fas fa-print"></i> Imprimir Turno
-              </button>
-              <button id="btn-caja" class="btn btn-outline-success" onclick="procesarCaja()" disabled>
-                <i class="fas fa-cash-register"></i> Caja
-              </button>
-            </div>
-          </div>
+        <div class="botones-fijos text-center">
+          <button id="btn-otorgar" class="btn btn-success btn-lg me-3" onclick="otorgarTurno()" disabled>
+            <i class="fas fa-check"></i> Otorgar Turno
+          </button>
+          <button id="btn-cancelar" class="btn btn-secondary btn-lg" onclick="cancelarSeleccion()" disabled>
+            <i class="fas fa-times"></i> Cancelar
+          </button>
         </div>
       </div>
     </div>
@@ -283,31 +256,13 @@ function eliminarTurno(fecha, hora, medicoId) {
 function actualizarEstadoBotones() {
   const btnOtorgar = document.getElementById('btn-otorgar');
   const btnCancelar = document.getElementById('btn-cancelar');
-  const btnEliminar = document.getElementById('btn-eliminar');
-  const btnBloquear = document.getElementById('btn-bloquear');
-  const btnLlego = document.getElementById('btn-llego');
-  const btnAtendido = document.getElementById('btn-atendido');
-  const btnImprimir = document.getElementById('btn-imprimir');
-  const btnCaja = document.getElementById('btn-caja');
   
   if (filaSeleccionada && datosSeleccionados) {
     btnOtorgar.disabled = false;
     btnCancelar.disabled = false;
-    btnEliminar.disabled = false;
-    btnBloquear.disabled = false;
-    btnLlego.disabled = false;
-    btnAtendido.disabled = false;
-    btnImprimir.disabled = false;
-    btnCaja.disabled = false;
   } else {
     btnOtorgar.disabled = true;
     btnCancelar.disabled = true;
-    btnEliminar.disabled = true;
-    btnBloquear.disabled = true;
-    btnLlego.disabled = true;
-    btnAtendido.disabled = true;
-    btnImprimir.disabled = true;
-    btnCaja.disabled = true;
   }
 }
 
@@ -556,77 +511,6 @@ function restaurarTurnos() {
       restaurarDatosTurno(fila);
     }
   });
-}
-
-// ========== FUNCIONES PARA LOS NUEVOS BOTONES ==========
-// (Estas funciones serán implementadas según las necesidades específicas)
-
-function eliminarTurno() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para eliminar.");
-    return;
-  }
-  
-  if (confirm("¿Está seguro que desea eliminar este turno?")) {
-    // TODO: Implementar lógica para eliminar turno de la base de datos
-    console.log("Eliminar turno:", datosSeleccionados);
-    alert("Función 'Eliminar Turno' - Pendiente de implementación");
-  }
-}
-
-function bloquearTurno() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para bloquear.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para bloquear turno
-  console.log("Bloquear turno:", datosSeleccionados);
-  alert("Función 'Bloquear Turno' - Pendiente de implementación");
-}
-
-function marcarLlego() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para marcar como llegó.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para marcar que el paciente llegó
-  console.log("Marcar llegó:", datosSeleccionados);
-  alert("Función 'Llegó' - Pendiente de implementación");
-}
-
-function marcarAtendido() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para marcar como atendido.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para marcar como atendido
-  console.log("Marcar atendido:", datosSeleccionados);
-  alert("Función 'Atendido' - Pendiente de implementación");
-}
-
-function imprimirTurno() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para imprimir.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para imprimir turno
-  console.log("Imprimir turno:", datosSeleccionados);
-  alert("Función 'Imprimir Turno' - Pendiente de implementación");
-}
-
-function procesarCaja() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para procesar en caja.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para procesar en caja
-  console.log("Procesar caja:", datosSeleccionados);
-  alert("Función 'Caja' - Pendiente de implementación");
 }
   </script>
 <script>
