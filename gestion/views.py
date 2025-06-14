@@ -79,13 +79,12 @@ def otorgar_turno(request, medico_id):
     if dni:
         paciente = Paciente.objects.filter(dni=dni).first()
 
-    # Usar DiaAtencion (no HorarioAtencion)
     dias_atencion = DiaAtencion.objects.filter(medico=medico)
 
     dias_mostrados = [
         {
             'dia': d.get_dia_display(),
-            'numero_dia': int(d.dia),  # convertir a int para usar weekday()
+            'numero_dia': int(d.dia),
             'horario_inicio': d.horario_inicio.strftime("%H:%M"),
             'horario_fin': d.horario_fin.strftime("%H:%M"),
             'intervalo': d.intervalo_minutos,
@@ -97,19 +96,16 @@ def otorgar_turno(request, medico_id):
     _, dias_en_mes = monthrange(anio, mes)
     primer_lunes = primer_dia_mes - timedelta(days=primer_dia_mes.weekday())
 
-    # Obtener días no laborables para este médico
     dias_no_laborables = set(
         DiaNoLaborable.objects.filter(medico=medico).values_list('fecha', flat=True)
     )
 
     calendario = []
 
-    for i in range(42):  # 6 semanas x 7 días
+    for i in range(42):
         dia = primer_lunes + timedelta(days=i)
         es_del_mes = dia.month == mes
-        # El campo dia en modelo es string número, convertir weekday a str para filtrar
         atiende = dias_atencion.filter(dia=str(dia.weekday())).exists()
-
         es_no_laborable = dia in dias_no_laborables
 
         calendario.append({
@@ -120,6 +116,8 @@ def otorgar_turno(request, medico_id):
         })
 
     matriz_turnos = []
+    turnos_ocupados_dict = {}  # <--- AGREGADO
+
     if fecha_seleccionada:
         dia_semana = str(fecha_seleccionada.weekday())
         horarios = dias_atencion.filter(dia=dia_semana)
@@ -136,12 +134,23 @@ def otorgar_turno(request, medico_id):
                     medico=medico,
                     fecha=fecha_seleccionada,
                     hora=hora_time
-                ).first()
+                ).select_related('paciente').first()
 
+                ocupado = turno_existente is not None
                 matriz_turnos.append({
                     'hora': hora_time.strftime("%H:%M"),
-                    'ocupado': turno_existente is not None
+                    'ocupado': ocupado
                 })
+
+                if ocupado:
+                    turnos_ocupados_dict[hora_time.strftime("%H:%M")] = {
+                        'apellido': turno_existente.paciente.apellido,
+                        'nombre': turno_existente.paciente.nombre,
+                        'sexo': turno_existente.paciente.sexo,
+                        'edad': turno_existente.paciente.edad,
+                        'obra_social': turno_existente.paciente.obra_social,
+                        'localidad': turno_existente.paciente.localidad,
+                    }
 
                 hora_actual += intervalo
 
@@ -187,12 +196,14 @@ def otorgar_turno(request, medico_id):
         'calendario': calendario,
         'dias_mostrados': dias_mostrados,
         'matriz_turnos': matriz_turnos,
+        'turnos_ocupados_dict': turnos_ocupados_dict,  # <--- AGREGADO
         'dni': dni,
         'paciente': paciente,
         'numero_dia_seleccionado': fecha_seleccionada.weekday() if fecha_seleccionada else None,
     }
 
     return render(request, 'gestion/otorgar_turno.html', contexto)
+
 
 def registrar_paciente(request, dni=None):
     if request.method == 'POST':
