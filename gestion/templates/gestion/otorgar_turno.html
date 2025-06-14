@@ -32,6 +32,22 @@
     z-index: 2;
     font-size: 0.9rem;
   }
+
+  /* Estilo para fila seleccionada */
+  .fila-seleccionada {
+    background-color: #e3f2fd !important;
+  }
+
+  /* Botones fijos */
+  .botones-fijos {
+    position: sticky;
+    bottom: 0;
+    background-color: white;
+    border-top: 2px solid #dee2e6;
+    padding: 15px;
+    margin-top: 10px;
+    z-index: 10;
+  }
 </style>
 {% endblock %}
 
@@ -129,12 +145,12 @@
                   <th>Edad</th>
                   <th>Obra Social</th>
                   <th>Localidad</th>
-                  <th>Acción</th>
+                  <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {% for fila in matriz_turnos %}
-                <tr>
+                <tr data-hora="{{ fila.hora }}">
                   <td>{{ fila.hora }}</td>
                   {% if fila.ocupado %}
 <td class="text-dark">{{ fila.dni }}</td>
@@ -161,12 +177,49 @@
                     <td class="edad text-muted"></td>
                     <td class="obra-social text-muted"></td>
                     <td class="localidad text-muted"></td>
-                    <td class="accion text-muted" style="font-size: 0.8rem;">Disponible</td>
+                    <td class="estado text-muted" style="font-size: 0.8rem;">Disponible</td>
                   {% endif %}
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
+          </div>
+        </div>
+        
+        <!-- Botones fijos -->
+        <div class="botones-fijos">
+          <div class="row">
+            <!-- Primera fila de botones -->
+            <div class="col-12 text-center mb-3">
+              <button id="btn-otorgar" class="btn btn-success me-2" onclick="otorgarTurno()" disabled>
+                <i class="fas fa-check"></i> Otorgar Turno
+              </button>
+              <button id="btn-cancelar" class="btn btn-secondary me-2" onclick="cancelarSeleccion()" disabled>
+                <i class="fas fa-times"></i> Cancelar
+              </button>
+              <button id="btn-eliminar" class="btn btn-danger me-2" onclick="eliminarTurno()" disabled>
+                <i class="fas fa-trash"></i> Eliminar Turno
+              </button>
+              <button id="btn-bloquear" class="btn btn-warning me-2" onclick="bloquearTurno()" disabled>
+                <i class="fas fa-lock"></i> Bloquear Turno
+              </button>
+            </div>
+            
+            <!-- Segunda fila de botones -->
+            <div class="col-12 text-center">
+              <button id="btn-llego" class="btn btn-info me-2" onclick="marcarLlego()" disabled>
+                <i class="fas fa-user-check"></i> Llegó
+              </button>
+              <button id="btn-atendido" class="btn btn-primary me-2" onclick="marcarAtendido()" disabled>
+                <i class="fas fa-user-md"></i> Atendido
+              </button>
+              <button id="btn-imprimir" class="btn btn-outline-dark me-2" onclick="imprimirTurno()" disabled>
+                <i class="fas fa-print"></i> Imprimir Turno
+              </button>
+              <button id="btn-caja" class="btn btn-outline-success" onclick="procesarCaja()" disabled>
+                <i class="fas fa-cash-register"></i> Caja
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -177,6 +230,10 @@
   <script>
     const urlBuscarPaciente = "{% url 'buscar_paciente_ajax' %}";
 const urlGuardarTurno = "{% url 'guardar_turno' %}";
+
+// Variables globales para controlar la selección
+let filaSeleccionada = null;
+let datosSeleccionados = null;
 
 // Objeto para almacenar los datos de turnos asignados
 let turnosAsignados = {};
@@ -222,6 +279,62 @@ function eliminarTurno(fecha, hora, medicoId) {
   delete turnosAsignados[clave];
 }
 
+// Función para habilitar/deshabilitar botones
+function actualizarEstadoBotones() {
+  const btnOtorgar = document.getElementById('btn-otorgar');
+  const btnCancelar = document.getElementById('btn-cancelar');
+  const btnEliminar = document.getElementById('btn-eliminar');
+  const btnBloquear = document.getElementById('btn-bloquear');
+  const btnLlego = document.getElementById('btn-llego');
+  const btnAtendido = document.getElementById('btn-atendido');
+  const btnImprimir = document.getElementById('btn-imprimir');
+  const btnCaja = document.getElementById('btn-caja');
+  
+  if (filaSeleccionada && datosSeleccionados) {
+    btnOtorgar.disabled = false;
+    btnCancelar.disabled = false;
+    btnEliminar.disabled = false;
+    btnBloquear.disabled = false;
+    btnLlego.disabled = false;
+    btnAtendido.disabled = false;
+    btnImprimir.disabled = false;
+    btnCaja.disabled = false;
+  } else {
+    btnOtorgar.disabled = true;
+    btnCancelar.disabled = true;
+    btnEliminar.disabled = true;
+    btnBloquear.disabled = true;
+    btnLlego.disabled = true;
+    btnAtendido.disabled = true;
+    btnImprimir.disabled = true;
+    btnCaja.disabled = true;
+  }
+}
+
+// Función para marcar fila como seleccionada
+function seleccionarFila(fila) {
+  // Remover selección anterior
+  if (filaSeleccionada) {
+    filaSeleccionada.classList.remove('fila-seleccionada');
+  }
+  
+  // Seleccionar nueva fila
+  filaSeleccionada = fila;
+  filaSeleccionada.classList.add('fila-seleccionada');
+  
+  actualizarEstadoBotones();
+}
+
+// Función para limpiar selección
+function limpiarSeleccion() {
+  if (filaSeleccionada) {
+    filaSeleccionada.classList.remove('fila-seleccionada');
+  }
+  filaSeleccionada = null;
+  datosSeleccionados = null;
+  actualizarEstadoBotones();
+}
+
 // Función para restaurar los datos de un turno en una fila
 function restaurarDatosTurno(fila) {
   const form = fila.querySelector('form');
@@ -247,7 +360,7 @@ function restaurarDatosTurno(fila) {
     const edadEl = fila.querySelector('.edad');
     const obraSocialEl = fila.querySelector('.obra-social');
     const localidadEl = fila.querySelector('.localidad');
-    const accionEl = fila.querySelector('.accion');
+    const estadoEl = fila.querySelector('.estado');
     
     if (apellidoEl) apellidoEl.textContent = datosGuardados.apellido;
     if (nombreEl) nombreEl.textContent = datosGuardados.nombre;
@@ -256,8 +369,8 @@ function restaurarDatosTurno(fila) {
     if (obraSocialEl) obraSocialEl.textContent = datosGuardados.obra_social;
     if (localidadEl) localidadEl.textContent = datosGuardados.localidad;
     
-    if (accionEl) {
-      accionEl.innerHTML = `<span class="badge bg-danger">Ocupado</span>`;
+    if (estadoEl) {
+      estadoEl.innerHTML = `<span class="badge bg-danger">Ocupado</span>`;
     }
     
     return true;
@@ -289,16 +402,29 @@ async function buscarPaciente(event, form) {
       fila.querySelector('.edad').textContent = calculaEdad(data.fecha_nacimiento);
       fila.querySelector('.obra-social').textContent = data.obra_social;
       fila.querySelector('.localidad').textContent = data.localidad;
+      fila.querySelector('.estado').innerHTML = `<span class="badge bg-warning">Pendiente</span>`;
 
       const fechaRaw = form.querySelector('input[name="fecha"]').value;
       const hora = form.querySelector('input[name="hora_busqueda"]').value;
       const medicoId = form.querySelector('input[name="medico_id"]').value;
 
-      // Mostrar botones de guardar y cancelar
-      fila.querySelector('.accion').innerHTML = `
-        <button class="btn btn-sm btn-success me-2" onclick="guardarTurno(this, ${data.id}, '${fechaRaw}', '${hora}', '${medicoId}')">Guardar</button>
-        <button class="btn btn-sm btn-secondary" onclick="cancelarAsignacion(this)">Cancelar</button>
-      `;
+      // Guardar datos para el turno
+      datosSeleccionados = {
+        pacienteId: data.id,
+        fechaRaw: fechaRaw,
+        hora: hora,
+        medicoId: medicoId,
+        dni: dni,
+        apellido: data.apellido,
+        nombre: data.nombre,
+        sexo: data.sexo,
+        edad: calculaEdad(data.fecha_nacimiento),
+        obra_social: data.obra_social,
+        localidad: data.localidad
+      };
+
+      // Seleccionar la fila
+      seleccionarFila(fila);
 
     } else {
       alert("Paciente no encontrado. Debe registrarlo primero.");
@@ -311,11 +437,14 @@ async function buscarPaciente(event, form) {
   }
 }
 
-// Función para guardar el turno
-async function guardarTurno(boton, pacienteId, fechaRaw, hora, medicoId) {
-  const fila = boton.closest('tr');
-  
-  const fechaObj = new Date(fechaRaw);
+// Función para otorgar turno
+async function otorgarTurno() {
+  if (!datosSeleccionados) {
+    alert("No hay datos seleccionados para otorgar el turno.");
+    return;
+  }
+
+  const fechaObj = new Date(datosSeleccionados.fechaRaw);
   const fechaFormateada = fechaObj.toISOString().split('T')[0];
 
   if (esFechaPasada(fechaFormateada)) {
@@ -332,30 +461,25 @@ async function guardarTurno(boton, pacienteId, fechaRaw, hora, medicoId) {
       },
       body: JSON.stringify({
         fecha: fechaFormateada,
-        hora: hora,
-        medico: medicoId,
-        paciente: pacienteId
+        hora: datosSeleccionados.hora,
+        medico: datosSeleccionados.medicoId,
+        paciente: datosSeleccionados.pacienteId
       })
     });
 
     if (resp.ok) {
       // Guardar los datos del turno en memoria para persistencia
-      const datosTurno = {
-        apellido: fila.querySelector('.apellido').textContent,
-        nombre: fila.querySelector('.nombre').textContent,
-        sexo: fila.querySelector('.sexo').textContent,
-        edad: fila.querySelector('.edad').textContent,
-        obra_social: fila.querySelector('.obra-social').textContent,
-        localidad: fila.querySelector('.localidad').textContent,
-        pacienteId: pacienteId
-      };
+      guardarDatosTurno(datosSeleccionados.fechaRaw, datosSeleccionados.hora, datosSeleccionados.medicoId, datosSeleccionados);
       
-      guardarDatosTurno(fechaRaw, hora, medicoId, datosTurno);
+      // Actualizar el estado de la fila
+      if (filaSeleccionada) {
+        filaSeleccionada.querySelector('.estado').innerHTML = `<span class="badge bg-danger">Ocupado</span>`;
+      }
       
-      // Mostrar estado ocupado
-      fila.querySelector('.accion').innerHTML = `
-        <span class="badge bg-danger">Ocupado</span>
-      `;
+      // Limpiar selección
+      limpiarSeleccion();
+      
+      alert("Turno otorgado exitosamente.");
       
     } else {
       alert("Error al guardar el turno.");
@@ -366,22 +490,15 @@ async function guardarTurno(boton, pacienteId, fechaRaw, hora, medicoId) {
   }
 }
 
-// Función para cancelar la asignación
-function cancelarAsignacion(boton) {
-  const fila = boton.closest('tr');
-  const form = fila.querySelector('form');
-  
-  // Si había un turno guardado, eliminarlo de la memoria
-  if (form) {
-    const fechaRaw = form.querySelector('input[name="fecha"]').value;
-    const hora = form.querySelector('input[name="hora_busqueda"]').value;
-    const medicoId = form.querySelector('input[name="medico_id"]').value;
-    
-    eliminarTurno(fechaRaw, hora, medicoId);
+// Función para cancelar selección
+function cancelarSeleccion() {
+  if (filaSeleccionada) {
+    // Limpiar toda la fila
+    limpiarFilaCompleta(filaSeleccionada);
   }
   
-  // Limpiar toda la fila
-  limpiarFilaCompleta(fila);
+  // Limpiar selección
+  limpiarSeleccion();
 }
 
 // Función para limpiar completamente una fila
@@ -392,23 +509,41 @@ function limpiarFilaCompleta(fila) {
   const edadEl = fila.querySelector('.edad');
   const obraSocialEl = fila.querySelector('.obra-social');
   const localidadEl = fila.querySelector('.localidad');
-  const accionEl = fila.querySelector('.accion');
+  const estadoEl = fila.querySelector('.estado');
   const form = fila.querySelector('form');
   
-  if (apellidoEl) apellidoEl.textContent = '';
-  if (nombreEl) nombreEl.textContent = '';
-  if (sexoEl) sexoEl.textContent = '';
-  if (edadEl) edadEl.textContent = '';
-  if (obraSocialEl) obraSocialEl.textContent = '';
-  if (localidadEl) localidadEl.textContent = '';
+  if (apellidoEl) {
+    apellidoEl.textContent = '';
+    apellidoEl.classList.add('text-muted');
+  }
+  if (nombreEl) {
+    nombreEl.textContent = '';
+    nombreEl.classList.add('text-muted');
+  }
+  if (sexoEl) {
+    sexoEl.textContent = '';
+    sexoEl.classList.add('text-muted');
+  }
+  if (edadEl) {
+    edadEl.textContent = '';
+    edadEl.classList.add('text-muted');
+  }
+  if (obraSocialEl) {
+    obraSocialEl.textContent = '';
+    obraSocialEl.classList.add('text-muted');
+  }
+  if (localidadEl) {
+    localidadEl.textContent = '';
+    localidadEl.classList.add('text-muted');
+  }
   
   if (form) {
     const dniInput = form.querySelector('input[name="dni"]');
     if (dniInput) dniInput.value = '';
   }
   
-  if (accionEl) {
-    accionEl.innerHTML = `<span class="text-muted">Disponible</span>`;
+  if (estadoEl) {
+    estadoEl.innerHTML = `<span class="text-muted">Disponible</span>`;
   }
 }
 
@@ -421,6 +556,77 @@ function restaurarTurnos() {
       restaurarDatosTurno(fila);
     }
   });
+}
+
+// ========== FUNCIONES PARA LOS NUEVOS BOTONES ==========
+// (Estas funciones serán implementadas según las necesidades específicas)
+
+function eliminarTurno() {
+  if (!filaSeleccionada || !datosSeleccionados) {
+    alert("No hay turno seleccionado para eliminar.");
+    return;
+  }
+  
+  if (confirm("¿Está seguro que desea eliminar este turno?")) {
+    // TODO: Implementar lógica para eliminar turno de la base de datos
+    console.log("Eliminar turno:", datosSeleccionados);
+    alert("Función 'Eliminar Turno' - Pendiente de implementación");
+  }
+}
+
+function bloquearTurno() {
+  if (!filaSeleccionada || !datosSeleccionados) {
+    alert("No hay turno seleccionado para bloquear.");
+    return;
+  }
+  
+  // TODO: Implementar lógica para bloquear turno
+  console.log("Bloquear turno:", datosSeleccionados);
+  alert("Función 'Bloquear Turno' - Pendiente de implementación");
+}
+
+function marcarLlego() {
+  if (!filaSeleccionada || !datosSeleccionados) {
+    alert("No hay turno seleccionado para marcar como llegó.");
+    return;
+  }
+  
+  // TODO: Implementar lógica para marcar que el paciente llegó
+  console.log("Marcar llegó:", datosSeleccionados);
+  alert("Función 'Llegó' - Pendiente de implementación");
+}
+
+function marcarAtendido() {
+  if (!filaSeleccionada || !datosSeleccionados) {
+    alert("No hay turno seleccionado para marcar como atendido.");
+    return;
+  }
+  
+  // TODO: Implementar lógica para marcar como atendido
+  console.log("Marcar atendido:", datosSeleccionados);
+  alert("Función 'Atendido' - Pendiente de implementación");
+}
+
+function imprimirTurno() {
+  if (!filaSeleccionada || !datosSeleccionados) {
+    alert("No hay turno seleccionado para imprimir.");
+    return;
+  }
+  
+  // TODO: Implementar lógica para imprimir turno
+  console.log("Imprimir turno:", datosSeleccionados);
+  alert("Función 'Imprimir Turno' - Pendiente de implementación");
+}
+
+function procesarCaja() {
+  if (!filaSeleccionada || !datosSeleccionados) {
+    alert("No hay turno seleccionado para procesar en caja.");
+    return;
+  }
+  
+  // TODO: Implementar lógica para procesar en caja
+  console.log("Procesar caja:", datosSeleccionados);
+  alert("Función 'Caja' - Pendiente de implementación");
 }
   </script>
 <script>
