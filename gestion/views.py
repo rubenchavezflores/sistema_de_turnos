@@ -58,6 +58,13 @@ def inicio(request):
 
 
 
+from datetime import datetime, timedelta
+from calendar import monthrange
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse
+from django.contrib import messages
+from django.utils import timezone
+
 def otorgar_turno(request, medico_id):
     medico = get_object_or_404(Medico, id=medico_id)
     hoy = timezone.now().date()
@@ -116,7 +123,7 @@ def otorgar_turno(request, medico_id):
         })
 
     matriz_turnos = []
-    turnos_ocupados_dict = {}  # <--- AGREGADO
+    turnos_ocupados_dict = {}
 
     if fecha_seleccionada:
         dia_semana = str(fecha_seleccionada.weekday())
@@ -154,17 +161,29 @@ def otorgar_turno(request, medico_id):
 
                 hora_actual += intervalo
 
+        # Si no se está buscando por DNI, mostrar el paciente del turno ya asignado
+        if not dni:
+            turno_existente = Turno.objects.filter(
+                medico=medico,
+                fecha=fecha_seleccionada
+            ).select_related('paciente').first()
+
+            if turno_existente:
+                paciente = turno_existente.paciente
+
     if request.method == "POST" and request.POST.get('accion') == 'reservar_turno':
-        fecha = request.POST.get('fecha')
+        fecha_post = request.POST.get('fecha')
         hora_str = request.POST.get('hora')
         dni_post = request.POST.get('dni')
-        paciente = Paciente.objects.filter(dni=dni_post).first()
+        paciente_post = Paciente.objects.filter(dni=dni_post).first()
 
-        if paciente:
+        if paciente_post:
             try:
-                fecha_dt = datetime.strptime(fecha, "%Y-%m-%d").date()
+                fecha_dt = datetime.strptime(fecha_post, "%Y-%m-%d").date()
                 hora_time = datetime.strptime(hora_str, "%H:%M").time()
             except ValueError:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'error': 'Fecha u hora inválida.'}, status=400)
                 messages.error(request, "Fecha u hora inválida.")
                 return redirect(request.path)
 
@@ -173,15 +192,24 @@ def otorgar_turno(request, medico_id):
             if not ya_ocupado:
                 Turno.objects.create(
                     medico=medico,
-                    paciente=paciente,
+                    paciente=paciente_post,
                     fecha=fecha_dt,
                     hora=hora_time,
                 )
-                messages.success(request, f"Turno asignado a {paciente.apellido}, {paciente.nombre} el {fecha_dt.strftime('%d/%m/%Y')} a las {hora_str}.")
-                return redirect(request.path + f"?mes={mes}&anio={anio}&fecha={fecha}&dni={dni_post}")
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'mensaje': 'Turno otorgado con éxito.'})
+                messages.success(request, f"Turno asignado a {paciente_post.apellido}, {paciente_post.nombre} el {fecha_dt.strftime('%d/%m/%Y')} a las {hora_str}.")
+                query_params = f"?mes={mes}&anio={anio}"
+                if fecha_post and dni_post:
+                    query_params += f"&fecha={fecha_post}&dni={dni_post}"
+                return redirect(request.path + query_params)
             else:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'error': 'Este turno ya fue asignado.'}, status=400)
                 messages.error(request, "Este turno ya fue asignado.")
         else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'error': 'Paciente no encontrado.'}, status=400)
             messages.error(request, "Paciente no encontrado.")
 
     contexto = {
@@ -196,13 +224,14 @@ def otorgar_turno(request, medico_id):
         'calendario': calendario,
         'dias_mostrados': dias_mostrados,
         'matriz_turnos': matriz_turnos,
-        'turnos_ocupados_dict': turnos_ocupados_dict,  # <--- AGREGADO
+        'turnos_ocupados_dict': turnos_ocupados_dict,
         'dni': dni,
         'paciente': paciente,
         'numero_dia_seleccionado': fecha_seleccionada.weekday() if fecha_seleccionada else None,
     }
 
     return render(request, 'gestion/otorgar_turno.html', contexto)
+
 
 
 def registrar_paciente(request, dni=None):

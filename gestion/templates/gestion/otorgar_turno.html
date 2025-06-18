@@ -153,14 +153,26 @@
                 <tr data-hora="{{ fila.hora }}">
                   <td>{{ fila.hora }}</td>
                   {% if fila.ocupado %}
-<td class="text-dark">{{ fila.dni }}</td>
-<td class="text-dark">{{ fila.apellido }}</td>
-<td class="text-dark">{{ fila.nombre }}</td>
-<td class="text-dark">{{ fila.sexo }}</td>
-<td class="text-dark">{{ fila.edad }}</td>
-<td class="text-dark">{{ fila.obra_social }}</td>
-<td class="text-dark">{{ fila.localidad }}</td>
-<td><span class="badge bg-danger">Ocupado</span></td>
+                      {% if fila.paciente %} <!-- Verifica si hay un paciente asociado en la base de datos -->
+                          <td class="text-dark">{{ fila.paciente.dni }}</td>
+                          <td class="text-dark">{{ fila.paciente.apellido }}</td>
+                          <td class="text-dark">{{ fila.paciente.nombre }}</td>
+                          <td class="text-dark">{{ fila.paciente.sexo }}</td>
+                          <td class="text-dark">{{ fila.paciente.edad }}</td>
+                          <td class="text-dark">{{ fila.paciente.obra_social }}</td>
+                          <td class="text-dark">{{ fila.paciente.localidad }}</td>
+                          <td><span class="badge bg-danger">Ocupado</span></td>
+                      {% else %} <!-- Si no hay paciente en la base de datos, intenta recuperar de localStorage -->
+                          <!-- ID para facilitar la selección con JavaScript -->
+                          <td class="text-dark turno-dni" id="turno-dni-{{ fila.hora }}">{{ fila.dni }}</td>
+                          <td class="text-dark turno-apellido" id="turno-apellido-{{ fila.hora }}"></td>
+                          <td class="text-dark turno-nombre" id="turno-nombre-{{ fila.hora }}"></td>
+                          <td class="text-dark turno-sexo" id="turno-sexo-{{ fila.hora }}"></td>
+                          <td class="text-dark turno-edad" id="turno-edad-{{ fila.hora }}"></td>
+                          <td class="text-dark turno-obra-social" id="turno-obra-social-{{ fila.hora }}"></td>
+                          <td class="text-dark turno-localidad" id="turno-localidad-{{ fila.hora }}"></td>
+                          <td><span class="badge bg-danger">Ocupado </span></td>
+                      {% endif %}
                   {% else %}
                     <td>
                       <form class="dni-busqueda d-flex justify-content-center" onsubmit="return buscarPaciente(event, this)">
@@ -185,7 +197,7 @@
             </table>
           </div>
         </div>
-        
+
         <!-- Botones fijos -->
         <div class="botones-fijos">
           <div class="row">
@@ -204,7 +216,7 @@
                 <i class="fas fa-lock"></i> Bloquear Turno
               </button>
             </div>
-            
+
             <!-- Segunda fila de botones -->
             <div class="col-12 text-center">
               <button id="btn-llego" class="btn btn-info me-2" onclick="marcarLlego()" disabled>
@@ -229,173 +241,339 @@
 
   <script>
     const urlBuscarPaciente = "{% url 'buscar_paciente_ajax' %}";
-const urlGuardarTurno = "{% url 'guardar_turno' %}";
+    const urlGuardarTurno = "{% url 'guardar_turno' %}";
 
-// Variables globales para controlar la selección
-let filaSeleccionada = null;
-let datosSeleccionados = null;
+    // Variables globales para controlar la selección
+    let filaSeleccionada = null;
+    let datosSeleccionados = null;
 
-// Objeto para almacenar los datos de turnos asignados
-let turnosAsignados = {};
+    // Clave base para localStorage
+    const localStorageKey = 'turnosAsignados';
 
-function calculaEdad(fecha_nacimiento) {
-  const hoy = new Date();
-  const nacimiento = new Date(fecha_nacimiento);
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const m = hoy.getMonth() - nacimiento.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--;
-  }
-  return edad;
-}
-
-function esFechaPasada(fechaStr) {
-  const fecha = new Date(fechaStr);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  return fecha < hoy;
-}
-
-// Función para generar una clave única para cada turno
-function generarClaveTurno(fecha, hora, medicoId) {
-  return `${fecha}_${hora}_${medicoId}`;
-}
-
-// Función para guardar los datos del turno en memoria
-function guardarDatosTurno(fecha, hora, medicoId, datosPaciente) {
-  const clave = generarClaveTurno(fecha, hora, medicoId);
-  turnosAsignados[clave] = datosPaciente;
-}
-
-// Función para recuperar los datos del turno desde memoria
-function recuperarDatosTurno(fecha, hora, medicoId) {
-  const clave = generarClaveTurno(fecha, hora, medicoId);
-  return turnosAsignados[clave] || null;
-}
-
-// Función para eliminar un turno de la memoria
-function eliminarTurno(fecha, hora, medicoId) {
-  const clave = generarClaveTurno(fecha, hora, medicoId);
-  delete turnosAsignados[clave];
-}
-
-// Función para habilitar/deshabilitar botones
-function actualizarEstadoBotones() {
-  const btnOtorgar = document.getElementById('btn-otorgar');
-  const btnCancelar = document.getElementById('btn-cancelar');
-  const btnEliminar = document.getElementById('btn-eliminar');
-  const btnBloquear = document.getElementById('btn-bloquear');
-  const btnLlego = document.getElementById('btn-llego');
-  const btnAtendido = document.getElementById('btn-atendido');
-  const btnImprimir = document.getElementById('btn-imprimir');
-  const btnCaja = document.getElementById('btn-caja');
-  
-  if (filaSeleccionada && datosSeleccionados) {
-    btnOtorgar.disabled = false;
-    btnCancelar.disabled = false;
-    btnEliminar.disabled = false;
-    btnBloquear.disabled = false;
-    btnLlego.disabled = false;
-    btnAtendido.disabled = false;
-    btnImprimir.disabled = false;
-    btnCaja.disabled = false;
-  } else {
-    btnOtorgar.disabled = true;
-    btnCancelar.disabled = true;
-    btnEliminar.disabled = true;
-    btnBloquear.disabled = true;
-    btnLlego.disabled = true;
-    btnAtendido.disabled = true;
-    btnImprimir.disabled = true;
-    btnCaja.disabled = true;
-  }
-}
-
-// Función para marcar fila como seleccionada
-function seleccionarFila(fila) {
-  // Remover selección anterior
-  if (filaSeleccionada) {
-    filaSeleccionada.classList.remove('fila-seleccionada');
-  }
-  
-  // Seleccionar nueva fila
-  filaSeleccionada = fila;
-  filaSeleccionada.classList.add('fila-seleccionada');
-  
-  actualizarEstadoBotones();
-}
-
-// Función para limpiar selección
-function limpiarSeleccion() {
-  if (filaSeleccionada) {
-    filaSeleccionada.classList.remove('fila-seleccionada');
-  }
-  filaSeleccionada = null;
-  datosSeleccionados = null;
-  actualizarEstadoBotones();
-}
-
-// Función para restaurar los datos de un turno en una fila
-function restaurarDatosTurno(fila) {
-  const form = fila.querySelector('form');
-  if (!form) return false;
-  
-  const fechaInput = form.querySelector('input[name="fecha"]');
-  const horaInput = form.querySelector('input[name="hora_busqueda"]');
-  const medicoInput = form.querySelector('input[name="medico_id"]');
-  
-  if (!fechaInput || !horaInput || !medicoInput) return false;
-  
-  const fechaRaw = fechaInput.value;
-  const hora = horaInput.value;
-  const medicoId = medicoInput.value;
-  
-  const datosGuardados = recuperarDatosTurno(fechaRaw, hora, medicoId);
-  
-  if (datosGuardados) {
-    // Restaurar los datos del paciente
-    const apellidoEl = fila.querySelector('.apellido');
-    const nombreEl = fila.querySelector('.nombre');
-    const sexoEl = fila.querySelector('.sexo');
-    const edadEl = fila.querySelector('.edad');
-    const obraSocialEl = fila.querySelector('.obra-social');
-    const localidadEl = fila.querySelector('.localidad');
-    const estadoEl = fila.querySelector('.estado');
-    
-    if (apellidoEl) apellidoEl.textContent = datosGuardados.apellido;
-    if (nombreEl) nombreEl.textContent = datosGuardados.nombre;
-    if (sexoEl) sexoEl.textContent = datosGuardados.sexo;
-    if (edadEl) edadEl.textContent = datosGuardados.edad;
-    if (obraSocialEl) obraSocialEl.textContent = datosGuardados.obra_social;
-    if (localidadEl) localidadEl.textContent = datosGuardados.localidad;
-    
-    if (estadoEl) {
-      estadoEl.innerHTML = `<span class="badge bg-danger">Ocupado</span>`;
+    // Función para guardar los turnos en localStorage
+    function guardarTurnosEnLocalStorage(turnos) {
+        try {
+            localStorage.setItem(localStorageKey, JSON.stringify(turnos));
+        } catch (e) {
+            console.error("Error al guardar en localStorage:", e);
+            alert("Error al guardar los datos localmente.  Puede que el navegador no tenga suficiente espacio.");
+        }
     }
-    
-    return true;
-  }
-  
-  return false;
-}
 
-async function buscarPaciente(event, form) {
-  event.preventDefault();
+    // Función para obtener los turnos desde localStorage
+    function obtenerTurnosDesdeLocalStorage() {
+        try {
+            const turnosString = localStorage.getItem(localStorageKey);
+            return turnosString ? JSON.parse(turnosString) : {};
+        } catch (e) {
+            console.warn("Error al obtener datos de localStorage:", e);
+            return {};  // Devuelve un objeto vacío en caso de error
+        }
+    }
 
-  const dni = form.querySelector('input[name="dni"]').value.trim();
-  if (!dni.match(/^\d{7,8}$/)) {
-    alert('Por favor, ingrese un DNI válido (7 u 8 dígitos numéricos).');
-    return false;
-  }
+    // Inicializar turnosAsignados con los datos de localStorage
+    let turnosAsignados = obtenerTurnosDesdeLocalStorage();
 
-  try {
-    const response = await fetch(`${urlBuscarPaciente}?dni=${dni}`);
-    if (!response.ok) throw new Error('Error en la búsqueda del paciente');
-    const data = await response.json();
-    const fila = form.closest('tr');
+    function calculaEdad(fecha_nacimiento) {
+      const hoy = new Date();
+      const nacimiento = new Date(fecha_nacimiento);
+      let edad = hoy.getFullYear() - nacimiento.getFullYear();
+      const m = hoy.getMonth() - nacimiento.getMonth();
+      if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
+        edad--;
+      }
+      return edad;
+    }
 
-    if (data.existe) {
-      // Actualizar los datos del paciente
+    function esFechaPasada(fechaStr) {
+      const fecha = new Date(fechaStr);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      return fecha < hoy;
+    }
+
+    // Función para generar una clave única para cada turno
+    function generarClaveTurno(fecha, hora, medicoId) {
+        // Formatear la fecha a YYYY-MM-DD para mayor claridad
+        const fechaFormateada = new Date(fecha).toISOString().slice(0, 10);
+        return `${fechaFormateada}_${hora}_${medicoId}`;
+    }
+
+    // Función para guardar los datos del turno en memoria (y localStorage)
+    function guardarDatosTurno(fecha, hora, medicoId, datosPaciente) {
+        const clave = generarClaveTurno(fecha, hora, medicoId);
+        turnosAsignados[clave] = datosPaciente;
+        guardarTurnosEnLocalStorage(turnosAsignados);
+    }
+
+    // Función para recuperar los datos del turno desde memoria
+    function recuperarDatosTurno(fecha, hora, medicoId) {
+        const clave = generarClaveTurno(fecha, hora, medicoId);
+        return turnosAsignados[clave] || null;
+    }
+
+    // Función para eliminar un turno de la memoria
+    function eliminarTurno(fecha, hora, medicoId) {
+        const clave = generarClaveTurno(fecha, hora, medicoId);
+        delete turnosAsignados[clave];
+        guardarTurnosEnLocalStorage(turnosAsignados);
+    }
+
+    // Función para habilitar/deshabilitar botones
+    function actualizarEstadoBotones() {
+      const btnOtorgar = document.getElementById('btn-otorgar');
+      const btnCancelar = document.getElementById('btn-cancelar');
+      const btnEliminar = document.getElementById('btn-eliminar');
+      const btnBloquear = document.getElementById('btn-bloquear');
+      const btnLlego = document.getElementById('btn-llego');
+      const btnAtendido = document.getElementById('btn-atendido');
+      const btnImprimir = document.getElementById('btn-imprimir');
+      const btnCaja = document.getElementById('btn-caja');
+
+      if (filaSeleccionada && datosSeleccionados) {
+        btnOtorgar.disabled = false;
+        btnCancelar.disabled = false;
+        btnEliminar.disabled = false;
+        btnBloquear.disabled = false;
+        btnLlego.disabled = false;
+        btnAtendido.disabled = false;
+        btnImprimir.disabled = false;
+        btnCaja.disabled = false;
+      } else {
+        btnOtorgar.disabled = true;
+        btnCancelar.disabled = true;
+        btnEliminar.disabled = true;
+        btnBloquear.disabled = true;
+        btnLlego.disabled = true;
+        btnAtendido.disabled = true;
+        btnImprimir.disabled = true;
+        btnCaja.disabled = true;
+      }
+    }
+
+    // Función para marcar fila como seleccionada
+    function seleccionarFila(fila) {
+      // Remover selección anterior
+      if (filaSeleccionada) {
+        filaSeleccionada.classList.remove('fila-seleccionada');
+      }
+
+      // Seleccionar nueva fila
+      filaSeleccionada = fila;
+      filaSeleccionada.classList.add('fila-seleccionada');
+
+      actualizarEstadoBotones();
+    }
+
+    // Función para limpiar selección
+    function limpiarSeleccion() {
+      if (filaSeleccionada) {
+        filaSeleccionada.classList.remove('fila-seleccionada');
+      }
+      filaSeleccionada = null;
+      datosSeleccionados = null;
+      actualizarEstadoBotones();
+    }
+
+    // Función para restaurar los datos de un turno en una fila
+    function restaurarDatosTurno(fila) {
+        const hora = fila.getAttribute('data-hora'); // Obtén la hora del atributo data-hora
+        const fechaInput = document.querySelector('input[name="fecha"]'); // Obtén el input de la fecha
+        if (!fechaInput) return false;
+
+        const fechaRaw = fechaInput.value; // Obtén el valor de la fecha
+        const medicoId = document.querySelector('input[name="medico_id"]').value; // Obtén el id del medico
+
+        const datosGuardados = recuperarDatosTurno(fechaRaw, hora, medicoId);
+
+        if (datosGuardados) {
+            // Obtener referencias a las celdas específicas dentro de la fila
+            const dniCelda = document.getElementById(`turno-dni-${hora}`);
+            const apellidoCelda = document.getElementById(`turno-apellido-${hora}`);
+            const nombreCelda = document.getElementById(`turno-nombre-${hora}`);
+            const sexoCelda = document.getElementById(`turno-sexo-${hora}`);
+            const edadCelda = document.getElementById(`turno-edad-${hora}`);
+            const obraSocialCelda = document.getElementById(`turno-obra-social-${hora}`);
+            const localidadCelda = document.getElementById(`turno-localidad-${hora}`);
+
+            // Asignar los valores recuperados a las celdas
+            if (dniCelda) dniCelda.textContent = datosGuardados.dni;
+            if (apellidoCelda) apellidoCelda.textContent = datosGuardados.apellido;
+            if (nombreCelda) nombreCelda.textContent = datosGuardados.nombre;
+            if (sexoCelda) sexoCelda.textContent = datosGuardados.sexo;
+            if (edadCelda) edadCelda.textContent = datosGuardados.edad;
+            if (obraSocialCelda) obraSocialCelda.textContent = datosGuardados.obra_social;
+            if (localidadCelda) localidadCelda.textContent = datosGuardados.localidad;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    async function buscarPaciente(event, form) {
+      event.preventDefault();
+
+      const dni = form.querySelector('input[name="dni"]').value.trim();
+      if (!dni.match(/^\d{7,8}$/)) {
+        alert('Por favor, ingrese un DNI válido (7 u 8 dígitos numéricos).');
+        return false;
+      }
+
+      try {
+        const response = await fetch(`${urlBuscarPaciente}?dni=${dni}`);
+        if (!response.ok) throw new Error('Error en la búsqueda del paciente');
+        const data = await response.json();
+        const fila = form.closest('tr');
+
+        if (data.existe) {
+          // Actualizar los datos del paciente
+          const apellidoEl = fila.querySelector('.apellido');
+          const nombreEl = fila.querySelector('.nombre');
+          const sexoEl = fila.querySelector('.sexo');
+          const edadEl = fila.querySelector('.edad');
+          const obraSocialEl = fila.querySelector('.obra-social');
+          const localidadEl = fila.querySelector('.localidad');
+          const estadoEl = fila.querySelector('.estado');
+
+          if (apellidoEl) {
+            apellidoEl.textContent = data.apellido;
+            apellidoEl.classList.remove('text-muted');
+            apellidoEl.classList.add('text-dark');
+          }
+          if (nombreEl) {
+            nombreEl.textContent = data.nombre;
+            nombreEl.classList.remove('text-muted');
+            nombreEl.classList.add('text-dark');
+          }
+          if (sexoEl) {
+            sexoEl.textContent = data.sexo;
+            sexoEl.classList.remove('text-muted');
+            sexoEl.classList.add('text-dark');
+          }
+          if (edadEl) {
+            edadEl.textContent = calculaEdad(data.fecha_nacimiento);
+            edadEl.classList.remove('text-muted');
+            edadEl.classList.add('text-dark');
+          }
+          if (obraSocialEl) {
+            obraSocialEl.textContent = data.obra_social;
+            obraSocialEl.classList.remove('text-muted');
+            obraSocialEl.classList.add('text-dark');
+          }
+          if (localidadEl) {
+            localidadEl.textContent = data.localidad;
+            localidadEl.classList.remove('text-muted');
+            localidadEl.classList.add('text-dark');
+          }
+          if (estadoEl) {
+            estadoEl.innerHTML = `<span class="badge bg-warning">Pendiente</span>`;
+          }
+
+          const fechaRaw = form.querySelector('input[name="fecha"]').value;
+          const hora = form.querySelector('input[name="hora_busqueda"]').value;
+          const medicoId = form.querySelector('input[name="medico_id"]').value;
+          const fechaObj = new Date(fechaRaw);
+          const fechaFormateada = fechaObj.toISOString().split('T')[0];
+
+          // Guardar datos para el turno
+          datosSeleccionados = {
+            pacienteId: data.id,
+            fechaRaw: fechaRaw,
+            fechaFormateada: fechaFormateada,
+            hora: hora,
+            medicoId: medicoId,
+            dni: dni,
+            apellido: data.apellido,
+            nombre: data.nombre,
+            sexo: data.sexo,
+            edad: calculaEdad(data.fecha_nacimiento),
+            obra_social: data.obra_social,
+            localidad: data.localidad
+          };
+
+          // Seleccionar la fila
+          seleccionarFila(fila);
+
+        } else {
+          alert("Paciente no encontrado. Debe registrarlo primero.");
+          form.querySelector('input[name="dni"]').value = '';
+        }
+
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Ocurrió un error al buscar el paciente.");
+      }
+    }
+
+    // Función para otorgar turno
+    async function otorgarTurno() {
+      if (!datosSeleccionados) {
+        alert("No hay datos seleccionados para otorgar el turno.");
+        return;
+      }
+
+      const fechaObj = new Date(datosSeleccionados.fechaRaw);
+      const fechaFormateada = fechaObj.toISOString().split('T')[0];
+
+      if (esFechaPasada(fechaFormateada)) {
+        alert("No se puede asignar un turno en una fecha pasada.");
+        return;
+      }
+
+      try {
+        const resp = await fetch(urlGuardarTurno, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify({
+            fecha: fechaFormateada,
+            hora: datosSeleccionados.hora,
+            medico: datosSeleccionados.medicoId,
+            paciente: datosSeleccionados.pacienteId
+          })
+        });
+
+        if (resp.ok) {
+          // Guardar los datos del turno en memoria para persistencia
+          guardarDatosTurno(datosSeleccionados.fechaRaw, datosSeleccionados.hora, datosSeleccionados.medicoId, datosSeleccionados);
+
+          // Actualizar el estado de la fila
+          if (filaSeleccionada) {
+            filaSeleccionada.querySelector('.estado').innerHTML = `<span class="badge bg-danger">Ocupado</span>`;
+          }
+
+          // Limpiar selección
+          limpiarSeleccion();
+
+          alert("Turno otorgado exitosamente.");
+
+        } else {
+           const errorData = await resp.json(); // Intenta parsear la respuesta como JSON
+           const errorMessage = errorData.error || "Error al guardar el turno"; // Obtiene el mensaje de error
+           alert(errorMessage);
+        }
+      } catch (error) {
+        console.error("Error al guardar:", error);
+        alert("Error al guardar el turno.");
+      }
+    }
+
+    // Función para cancelar selección
+    function cancelarSeleccion() {
+      if (filaSeleccionada) {
+        // Limpiar toda la fila
+        limpiarFilaCompleta(filaSeleccionada);
+      }
+
+      // Limpiar selección
+      limpiarSeleccion();
+    }
+
+    // Función para limpiar completamente una fila
+    function limpiarFilaCompleta(fila) {
       const apellidoEl = fila.querySelector('.apellido');
       const nombreEl = fila.querySelector('.nombre');
       const sexoEl = fila.querySelector('.sexo');
@@ -403,271 +581,197 @@ async function buscarPaciente(event, form) {
       const obraSocialEl = fila.querySelector('.obra-social');
       const localidadEl = fila.querySelector('.localidad');
       const estadoEl = fila.querySelector('.estado');
+      const form = fila.querySelector('form');
 
       if (apellidoEl) {
-        apellidoEl.textContent = data.apellido;
-        apellidoEl.classList.remove('text-muted');
-        apellidoEl.classList.add('text-dark');
+        apellidoEl.textContent = '';
+        apellidoEl.classList.add('text-muted');
       }
       if (nombreEl) {
-        nombreEl.textContent = data.nombre;
-        nombreEl.classList.remove('text-muted');
-        nombreEl.classList.add('text-dark');
+        nombreEl.textContent = '';
+        nombreEl.classList.add('text-muted');
       }
       if (sexoEl) {
-        sexoEl.textContent = data.sexo;
-        sexoEl.classList.remove('text-muted');
-        sexoEl.classList.add('text-dark');
+        sexoEl.textContent = '';
+        sexoEl.classList.add('text-muted');
       }
       if (edadEl) {
-        edadEl.textContent = calculaEdad(data.fecha_nacimiento);
-        edadEl.classList.remove('text-muted');
-        edadEl.classList.add('text-dark');
+        edadEl.textContent = '';
+        edadEl.classList.add('text-muted');
       }
       if (obraSocialEl) {
-        obraSocialEl.textContent = data.obra_social;
-        obraSocialEl.classList.remove('text-muted');
-        obraSocialEl.classList.add('text-dark');
+        obraSocialEl.textContent = '';
+        obraSocialEl.classList.add('text-muted');
       }
       if (localidadEl) {
-        localidadEl.textContent = data.localidad;
-        localidadEl.classList.remove('text-muted');
-        localidadEl.classList.add('text-dark');
+        localidadEl.textContent = '';
+        localidadEl.classList.add('text-muted');
       }
+
+      if (form) {
+        const dniInput = form.querySelector('input[name="dni"]');
+        if (dniInput) dniInput.value = '';
+      }
+
       if (estadoEl) {
-        estadoEl.innerHTML = `<span class="badge bg-warning">Pendiente</span>`;
+        estadoEl.innerHTML = `<span class="text-muted">Disponible</span>`;
+      }
+    }
+
+    // Función para restaurar todos los turnos al cargar la página
+    function restaurarTurnos() {
+        const filas = document.querySelectorAll('tr');
+        filas.forEach(fila => {
+            const form = fila.querySelector('form');
+            if (form) {
+                // No restaurar datos en filas con formulario
+            } else {
+                restaurarDatosTurno(fila); // Restaurar datos en filas ocupadas
+            }
+        });
+    }
+
+    // ========== FUNCIONES PARA LOS NUEVOS BOTONES ==========
+    // (Estas funciones serán implementadas según las necesidades específicas)
+
+    function eliminarTurno() {
+      if (!filaSeleccionada || !datosSeleccionados) {
+        alert("No hay turno seleccionado para eliminar.");
+        return;
       }
 
-      const fechaRaw = form.querySelector('input[name="fecha"]').value;
-      const hora = form.querySelector('input[name="hora_busqueda"]').value;
-      const medicoId = form.querySelector('input[name="medico_id"]').value;
-
-      // Guardar datos para el turno
-      datosSeleccionados = {
-        pacienteId: data.id,
-        fechaRaw: fechaRaw,
-        hora: hora,
-        medicoId: medicoId,
-        dni: dni,
-        apellido: data.apellido,
-        nombre: data.nombre,
-        sexo: data.sexo,
-        edad: calculaEdad(data.fecha_nacimiento),
-        obra_social: data.obra_social,
-        localidad: data.localidad
-      };
-
-      // Seleccionar la fila
-      seleccionarFila(fila);
-
-    } else {
-      alert("Paciente no encontrado. Debe registrarlo primero.");
-      form.querySelector('input[name="dni"]').value = '';
-    }
-
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Ocurrió un error al buscar el paciente.");
-  }
-}
-
-// Función para otorgar turno
-async function otorgarTurno() {
-  if (!datosSeleccionados) {
-    alert("No hay datos seleccionados para otorgar el turno.");
-    return;
-  }
-
-  const fechaObj = new Date(datosSeleccionados.fechaRaw);
-  const fechaFormateada = fechaObj.toISOString().split('T')[0];
-
-  if (esFechaPasada(fechaFormateada)) {
-    alert("No se puede asignar un turno en una fecha pasada.");
-    return;
-  }
-
-  try {
-    const resp = await fetch(urlGuardarTurno, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': '{{ csrf_token }}'
-      },
-      body: JSON.stringify({
-        fecha: fechaFormateada,
-        hora: datosSeleccionados.hora,
-        medico: datosSeleccionados.medicoId,
-        paciente: datosSeleccionados.pacienteId
-      })
-    });
-
-    if (resp.ok) {
-      // Guardar los datos del turno en memoria para persistencia
-      guardarDatosTurno(datosSeleccionados.fechaRaw, datosSeleccionados.hora, datosSeleccionados.medicoId, datosSeleccionados);
-      
-      // Actualizar el estado de la fila
-      if (filaSeleccionada) {
-        filaSeleccionada.querySelector('.estado').innerHTML = `<span class="badge bg-danger">Ocupado</span>`;
+      if (confirm("¿Está seguro que desea eliminar este turno?")) {
+        // TODO: Implementar lógica para eliminar turno de la base de datos
+        console.log("Eliminar turno:", datosSeleccionados);
+        alert("Función 'Eliminar Turno' - Pendiente de implementación");
       }
-      
-      // Limpiar selección
-      limpiarSeleccion();
-      
-      alert("Turno otorgado exitosamente.");
-      
-    } else {
-      alert("Error al guardar el turno.");
     }
-  } catch (error) {
-    console.error("Error al guardar:", error);
-    alert("Error al guardar el turno.");
-  }
-}
 
-// Función para cancelar selección
-function cancelarSeleccion() {
-  if (filaSeleccionada) {
-    // Limpiar toda la fila
-    limpiarFilaCompleta(filaSeleccionada);
-  }
-  
-  // Limpiar selección
-  limpiarSeleccion();
-}
+    function bloquearTurno() {
+      if (!filaSeleccionada || !datosSeleccionados) {
+        alert("No hay turno seleccionado para bloquear.");
+        return;
+      }
 
-// Función para limpiar completamente una fila
-function limpiarFilaCompleta(fila) {
-  const apellidoEl = fila.querySelector('.apellido');
-  const nombreEl = fila.querySelector('.nombre');
-  const sexoEl = fila.querySelector('.sexo');
-  const edadEl = fila.querySelector('.edad');
-  const obraSocialEl = fila.querySelector('.obra-social');
-  const localidadEl = fila.querySelector('.localidad');
-  const estadoEl = fila.querySelector('.estado');
-  const form = fila.querySelector('form');
-  
-  if (apellidoEl) {
-    apellidoEl.textContent = '';
-    apellidoEl.classList.add('text-muted');
-  }
-  if (nombreEl) {
-    nombreEl.textContent = '';
-    nombreEl.classList.add('text-muted');
-  }
-  if (sexoEl) {
-    sexoEl.textContent = '';
-    sexoEl.classList.add('text-muted');
-  }
-  if (edadEl) {
-    edadEl.textContent = '';
-    edadEl.classList.add('text-muted');
-  }
-  if (obraSocialEl) {
-    obraSocialEl.textContent = '';
-    obraSocialEl.classList.add('text-muted');
-  }
-  if (localidadEl) {
-    localidadEl.textContent = '';
-    localidadEl.classList.add('text-muted');
-  }
-  
-  if (form) {
-    const dniInput = form.querySelector('input[name="dni"]');
-    if (dniInput) dniInput.value = '';
-  }
-  
-  if (estadoEl) {
-    estadoEl.innerHTML = `<span class="text-muted">Disponible</span>`;
-  }
-}
-
-// Función para restaurar todos los turnos al cargar la página
-function restaurarTurnos() {
-  const filas = document.querySelectorAll('tr');
-  filas.forEach(fila => {
-    const form = fila.querySelector('form');
-    if (form) {
-      restaurarDatosTurno(fila);
+      // TODO: Implementar lógica para bloquear turno
+      console.log("Bloquear turno:", datosSeleccionados);
+      alert("Función 'Bloquear Turno' - Pendiente de implementación");
     }
-  });
-}
 
-// ========== FUNCIONES PARA LOS NUEVOS BOTONES ==========
-// (Estas funciones serán implementadas según las necesidades específicas)
+    function marcarLlego() {
+      if (!filaSeleccionada || !datosSeleccionados) {
+        alert("No hay turno seleccionado para marcar como llegó.");
+        return;
+      }
 
-function eliminarTurno() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para eliminar.");
-    return;
-  }
-  
-  if (confirm("¿Está seguro que desea eliminar este turno?")) {
-    // TODO: Implementar lógica para eliminar turno de la base de datos
-    console.log("Eliminar turno:", datosSeleccionados);
-    alert("Función 'Eliminar Turno' - Pendiente de implementación");
-  }
-}
+      // TODO: Implementar lógica para marcar que el paciente llegó
+      console.log("Marcar llegó:", datosSeleccionados);
+      alert("Función 'Llegó' - Pendiente de implementación");
+    }
 
-function bloquearTurno() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para bloquear.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para bloquear turno
-  console.log("Bloquear turno:", datosSeleccionados);
-  alert("Función 'Bloquear Turno' - Pendiente de implementación");
-}
+    function marcarAtendido() {
+      if (!filaSeleccionada || !datosSeleccionados) {
+        alert("No hay turno seleccionado para marcar como atendido.");
+        return;
+      }
 
-function marcarLlego() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para marcar como llegó.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para marcar que el paciente llegó
-  console.log("Marcar llegó:", datosSeleccionados);
-  alert("Función 'Llegó' - Pendiente de implementación");
-}
+      // TODO: Implementar lógica para marcar como atendido
+      console.log("Marcar atendido:", datosSeleccionados);
+      alert("Función 'Atendido' - Pendiente de implementación");
+    }
 
-function marcarAtendido() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para marcar como atendido.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para marcar como atendido
-  console.log("Marcar atendido:", datosSeleccionados);
-  alert("Función 'Atendido' - Pendiente de implementación");
-}
+    function imprimirTurno() {
+      if (!filaSeleccionada || !datosSeleccionados) {
+        alert("No hay turno seleccionado para imprimir.");
+        return;
+      }
 
-function imprimirTurno() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para imprimir.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para imprimir turno
-  console.log("Imprimir turno:", datosSeleccionados);
-  alert("Función 'Imprimir Turno' - Pendiente de implementación");
-}
+      // TODO: Implementar lógica para imprimir turno
+      console.log("Imprimir turno:", datosSeleccionados);
+      alert("Función 'Imprimir Turno' - Pendiente de implementación");
+    }
 
-function procesarCaja() {
-  if (!filaSeleccionada || !datosSeleccionados) {
-    alert("No hay turno seleccionado para procesar en caja.");
-    return;
-  }
-  
-  // TODO: Implementar lógica para procesar en caja
-  console.log("Procesar caja:", datosSeleccionados);
-  alert("Función 'Caja' - Pendiente de implementación");
-}
+    function procesarCaja() {
+      if (!filaSeleccionada || !datosSeleccionados) {
+        alert("No hay turno seleccionado para procesar en caja.");
+        return;
+      }
+
+      // TODO: Implementar lógica para procesar en caja
+      console.log("Procesar caja:", datosSeleccionados);
+      alert("Función 'Caja' - Pendiente de implementación");
+    }
   </script>
 <script>
   // Ejecutar después de que se cargue todo
-  setTimeout(function() {
-    restaurarTurnos();
-  }, 500);
+  document.addEventListener("DOMContentLoaded", function() {
+      restaurarTurnos();
+  });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const fechaSeleccionada = "{{ fecha_seleccionada|date:'Y-m-d' }}";
+    const hoy = new Date().toISOString().split('T')[0];
+
+    if (fechaSeleccionada < hoy) {
+        document.getElementById("dni_input").disabled = true;
+        document.getElementById("btn_buscar_dni").disabled = true;
+
+        const inputs = document.querySelectorAll(".paciente-input, .turno-input");
+        inputs.forEach(input => input.disabled = true);
+    }
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    const fechaSeleccionada = document.getElementById("fecha_seleccionada") ? document.getElementById("fecha_seleccionada").value : null;
+
+    const botonesReservar = document.querySelectorAll(".btn-reservar-turno");
+
+    botonesReservar.forEach(boton => {
+        boton.addEventListener("click", async function () {
+            const horaSeleccionada = this.dataset.hora;
+            const dniPaciente = document.getElementById("dni_paciente").value;
+            const medicoId = document.querySelector('input[name="medico_id"]').value; // Obtén el id del medico
+            const fechaObj = new Date(fechaSeleccionada);
+            const fechaFormateada = fechaObj.toISOString().split('T')[0];
+
+            if (!fechaSeleccionada || !horaSeleccionada || !dniPaciente) {
+                alert("Datos incompletos para otorgar el turno.");
+                return;
+            }
+
+            try {
+                const response = await fetch("{% url 'guardar_turno' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify({
+                        fecha: fechaFormateada,
+                        hora: horaSeleccionada,
+                        medico: medicoId,
+                        dni: dniPaciente
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "No se pudo otorgar el turno.");
+                }
+
+                const data = await response.json();
+                alert(data.mensaje);
+                location.reload(); // Recarga la página para actualizar turnos
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert(error.message || "No se pudo otorgar el turno.");
+            }
+        });
+    });
+});
+</script>
+
 </div>
 {% endblock %}
